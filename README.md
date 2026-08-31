@@ -3,9 +3,9 @@
 Issue tracking and project management for small teams — a Linear-inspired
 build, developed in stages as a learning project.
 
-> **Status: early.** Authentication and the database are working -- you can
-> sign up, sign in, and reach protected routes. The dashboard's stats and issue
-> list are still mock data. See the roadmap for what is real and what is not.
+> **Status: in progress.** Authentication works and the full domain schema is
+> live -- the dashboard reads real issues, labels and counts from Postgres.
+> There is no UI yet for creating or editing issues; that is Stage 5.
 
 ## Stack
 
@@ -30,9 +30,20 @@ resolution) and `lucide-react` (icons).
 npm install
 cp .env.example .env.local          # then generate your own AUTH_SECRET
 npm run db:up                       # Postgres 16 in Docker on port 5434
-npx prisma migrate dev              # create the schema
+npx prisma migrate dev              # create the schema (also runs the seed)
 npm run dev                         # http://localhost:3100
 ```
+
+Sign up in the browser, then give yourself sample issues:
+
+```bash
+npm run db:seed                     # idempotent; safe to re-run
+```
+
+**After changing `schema.prisma`, restart the dev server.** The Prisma client
+is cached on `globalThis` to survive hot reload (see below), which means a
+newly generated client is *not* picked up until the process restarts. The
+symptom is `Cannot read properties of undefined (reading 'findMany')`.
 
 Generate a real session secret before signing in:
 
@@ -56,9 +67,26 @@ URL, and letting Next pick the first free port made it move between restarts.
 - `src/proxy.ts` — route protection. Next 16 renamed `middleware.ts` to
   `proxy.ts`. It is a gate, not the security boundary: every protected page
   re-checks `auth()` itself.
-- `src/lib/mock-data.ts` — **temporary.** Deleted once real issues exist.
+- `src/lib/db.ts` — Prisma client singleton, cached on `globalThis`. Next
+  hot-reloads modules on every save; a plain module constant would open a fresh
+  connection pool per reload until Postgres refused connections.
+- `src/lib/issues.ts` — maps database enums to human labels and badge colours,
+  guarded by `satisfies` so a new enum value without a label fails the build.
 - Design tokens live in `@theme inline` inside `src/app/globals.css`. Tailwind 4
   is CSS-first; there is no `tailwind.config.js`.
+
+### Data model notes
+
+- **`WorkspaceMember` is an explicit join table**, not an implicit many-to-many,
+  because membership carries a role and a join date. Once a relationship has
+  attributes of its own, it is an entity.
+- **Deleting a user cascades their memberships but `SET NULL`s their issues and
+  comments.** Losing access must not erase the work they did.
+- **Issue numbers come from an atomic counter column**, not `count(*) + 1`, so
+  two simultaneous creates cannot both claim `FLOW-124`.
+- **`boardOrder` is a float.** Integer positions mean one drag rewrites every
+  row below it; floats let you insert at the midpoint of two neighbours.
+- Project keys and slugs are unique **per workspace**, not globally.
 
 ### Prisma 7 gotchas
 
@@ -75,7 +103,7 @@ URL, and letting Next pick the first free port made it move between restarts.
 - [x] **1. Foundation** — Next.js, TypeScript, Tailwind, ESLint, env setup
 - [x] **2. UI architecture** — app shell, responsive layout, server/client split
 - [x] **3. Authentication** — Auth.js, sessions, protected routes, logout
-- [ ] **4. Database** — full schema: workspaces, projects, issues, comments
+- [x] **4. Database** — PostgreSQL + Prisma, full domain schema, seeded
 - [ ] **5. Issue management** — CRUD, assignees, priorities, labels
 - [ ] **6. Kanban board** — drag and drop with optimistic updates
 - [ ] **7. AI layer** — issue summaries, generation, semantic search
@@ -86,9 +114,10 @@ URL, and letting Next pick the first free port made it move between restarts.
 - The dashboard greeting uses the **server's** clock, not the visitor's, so it
   is wrong for users in other timezones. Correct fix is a timezone on the user
   profile.
-- The mobile navigation drawer is implemented but not yet verified on a real
-  device.
-- Stats and the recent-issues list are mock data.
+- There is no UI for creating, editing or assigning issues yet — the seed
+  script is currently the only way to get data in.
+- The mobile drawer's open/close logic is verified, but its rendering at a real
+  mobile viewport is not.
 - One dev-only advisory is accepted rather than fixed: `deepmerge-ts` stack
   exhaustion, reachable only through the `prisma` CLI. npm's suggested remedy
   is a downgrade to Prisma 6.
