@@ -49,5 +49,3 @@ export const stats = [
   { label: "In Progress", value: 4 },
   { label: "Completed This Week", value: 8 },
 ];
-
-export const currentUser = { name: "Aditya", initials: "AG" };

@@ -4,13 +4,16 @@ import Link from "next/link";
 import { Menu, Search, X } from "lucide-react";
 
 import { useSidebar } from "./sidebar-context";
+import { UserMenu, type SessionUser } from "./user-menu";
 
 /**
- * Client Component only because of the drawer toggle. The search field and
- * avatar are inert placeholders -- search arrives in Stage 5, the real user
- * in Stage 3. They are here so the shell's proportions are honest now.
+ * Client Component because of the drawer toggle. `user` arrives as a plain
+ * serialisable object from the server layout -- functions and class instances
+ * cannot cross that boundary, but data can.
+ *
+ * The search field is still an inert placeholder; it becomes real in Stage 5.
  */
-export function Header() {
+export function Header({ user }: { user: SessionUser }) {
   const { isOpen, toggle } = useSidebar();
 
   return (
@@ -46,13 +49,7 @@ export function Header() {
         />
       </div>
 
-      <button
-        type="button"
-        aria-label="Account menu"
-        className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-subtle text-xs font-semibold text-accent"
-      >
-        AG
-      </button>
+      <UserMenu user={user} />
     </header>
   );
 }

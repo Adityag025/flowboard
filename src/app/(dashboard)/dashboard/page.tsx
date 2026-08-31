@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { auth } from "@/lib/auth";
 import {
-  currentUser,
   priorityLabels,
   recentIssues,
   stats,
@@ -15,17 +15,27 @@ export const metadata: Metadata = {
 };
 
 /**
- * A Server Component. Note what is NOT here: no "use client", no useEffect,
- * no loading state, no fetch-on-mount. The data is resolved before the HTML
- * is sent. In Stage 4 the import above becomes an awaited Prisma call and this
- * component's shape barely changes -- that is the whole point of the pattern.
+ * A Server Component. No "use client", no useEffect, no fetch-on-mount -- the
+ * data is resolved before any HTML is sent.
+ *
+ * This route was previously prerendered at BUILD time, which froze the
+ * greeting below into the static output forever. Calling auth() reads cookies,
+ * and reading cookies makes a route dynamic, so the greeting is now computed
+ * per request. The bug fixed itself the moment the page needed a real user --
+ * which is exactly why we did not paper over it with force-dynamic.
+ *
+ * The stats and issue list are still mock data. They become Prisma queries in
+ * Stage 4, and the shape of this component barely changes.
  */
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const session = await auth();
+  const firstName = session?.user?.name?.trim().split(/\s+/)[0] ?? "there";
+
   return (
     <div className="space-y-8">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">
-          {greeting()}, {currentUser.name}
+          {greeting()}, {firstName}
         </h1>
         <p className="text-sm text-muted">
           Here&apos;s what&apos;s happening with your projects.
@@ -74,9 +84,9 @@ export default function DashboardPage() {
 }
 
 /**
- * Runs on the SERVER, so this reflects the server's clock and timezone, not
- * the visitor's. Fine for now; a real fix means rendering it on the client or
- * reading the user's timezone from their profile in Stage 3.
+ * Still the SERVER's clock, so this reflects the server timezone rather than
+ * the visitor's. Correct fix is the user's timezone on their profile -- noted
+ * for when profiles land.
  */
 function greeting() {
   const hour = new Date().getHours();

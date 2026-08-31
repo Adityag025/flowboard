@@ -1,27 +1,37 @@
+import { redirect } from "next/navigation";
+
 import { Header } from "@/components/layout/header";
 import { Sidebar } from "@/components/layout/sidebar";
 import { SidebarProvider } from "@/components/layout/sidebar-context";
+import { auth } from "@/lib/auth";
 
 /**
- * The application shell.
+ * The application shell -- and the second of two auth checks.
  *
- * (dashboard) is a ROUTE GROUP -- parentheses mean the folder name is not part
- * of the URL. /dashboard, /projects and /issues all live at the top level but
- * share this layout. Stage 3's (auth) group will sit alongside it with a
- * completely different layout and no sidebar.
+ * Middleware already redirects unauthenticated requests away from these
+ * routes, so why check again? Because middleware is a matcher pattern, and a
+ * matcher is one typo away from silently not covering a route. This check is
+ * the one that actually guarantees `session.user` exists for everything
+ * rendered below, which is why the pages can use it without null-checking.
  *
- * This file is a SERVER Component. It ships no JavaScript of its own; only
- * Header and Sidebar cross into the client bundle. `children` is rendered on
- * the server and handed to the provider as an already-finished prop.
+ * Belt and braces on an auth boundary is not redundancy; it is the point.
  */
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
   return (
     <SidebarProvider>
-      <Header />
+      <Header
+        user={{ name: session.user.name ?? null, email: session.user.email ?? null }}
+      />
       <Sidebar />
       <main className="pt-14 lg:pl-60">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>
