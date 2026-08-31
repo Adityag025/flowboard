@@ -1,0 +1,37 @@
+# Local development database.
+#
+# FlowBoard gets its OWN Postgres container. Ports 5432 and 5433 on this
+# machine are already taken by other projects -- never point a project at
+# another project's database, even in development. Sharing one means a stray
+# `prisma migrate reset` wipes unrelated work.
+#
+# The credentials below are deliberately boring and deliberately committed.
+# This container binds to localhost only and holds nothing but disposable dev
+# data, so these are configuration, not secrets. Real credentials live in
+# .env.local (gitignored) and, in production, in the host's secret store.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: flowboard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: flowboard
+      POSTGRES_PASSWORD: flowboard_dev
+      POSTGRES_DB: flowboard
+    ports:
+      # host:container -- 5434 because 5432 (crm) and 5433 (tool-platform)
+      # are in use. The container still speaks 5432 internally.
+      - "5434:5432"
+    volumes:
+      - flowboard_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Prisma migrations fail confusingly if they run before Postgres finishes
+      # its first-boot initialisation. This gives us something to wait on.
+      test: ["CMD-SHELL", "pg_isready -U flowboard -d flowboard"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  flowboard_pgdata:

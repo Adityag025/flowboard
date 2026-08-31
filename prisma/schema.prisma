@@ -1,0 +1,46 @@
+// FlowBoard data model.
+//
+// The connection URL is NOT here -- Prisma 7 reads it from prisma7.config.ts,
+// which loads .env.local. Keeping it out of this file means the schema is safe
+// to commit and read.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// An account that can sign in.
+///
+/// Only what authentication needs. Workspace, Project, Issue, Comment, Label
+/// and Activity arrive in Stage 4, along with the relations between them.
+///
+/// There are no `Account` / `Session` / `VerificationToken` tables here, which
+/// an Auth.js tutorial would tell you to add. Those exist to serve the Prisma
+/// *adapter*, and the adapter only earns its place with OAuth providers or
+/// database-backed sessions. We use the Credentials provider, which Auth.js
+/// requires to pair with JWT sessions -- so there is no session row to store.
+/// Adding GitHub login later means adding the adapter and those tables then.
+model User {
+  id String @id @default(cuid())
+
+  name  String
+  email String @unique
+
+  /// A bcrypt hash -- never a plaintext password, and never returned to a
+  /// client. Nullable so a future OAuth-only user can exist without one.
+  passwordHash String?
+
+  image String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Postgres is case-sensitive, so "Aditya@x.com" and "aditya@x.com" would be
+  // two different rows under a plain @unique. We normalise to lowercase before
+  // every write and read instead of relying on the database to fold case.
+  @@map("users")
+}
