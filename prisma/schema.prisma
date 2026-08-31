@@ -1,8 +1,7 @@
 // FlowBoard data model.
 //
 // The connection URL is NOT here -- Prisma 7 reads it from prisma7.config.ts,
-// which loads .env.local. Keeping it out of this file means the schema is safe
-// to commit and read.
+// which loads .env.local. Keeping it out means this file is safe to commit.
 
 generator client {
   provider = "prisma-client"
@@ -13,25 +12,58 @@ datasource db {
   provider = "postgresql"
 }
 
-/// An account that can sign in.
-///
-/// Only what authentication needs. Workspace, Project, Issue, Comment, Label
-/// and Activity arrive in Stage 4, along with the relations between them.
-///
-/// There are no `Account` / `Session` / `VerificationToken` tables here, which
-/// an Auth.js tutorial would tell you to add. Those exist to serve the Prisma
-/// *adapter*, and the adapter only earns its place with OAuth providers or
-/// database-backed sessions. We use the Credentials provider, which Auth.js
-/// requires to pair with JWT sessions -- so there is no session row to store.
-/// Adding GitHub login later means adding the adapter and those tables then.
+// ---------------------------------------------------------------------------
+// Enums
+//
+// These become real Postgres enum types, not strings. The database itself then
+// rejects a typo like 'in progress', which a `String` column would happily
+// store forever. The cost is that adding a value is a migration -- a fair
+// trade for a set that changes rarely.
+// ---------------------------------------------------------------------------
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum IssueStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELED
+}
+
+enum IssuePriority {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ActivityType {
+  ISSUE_CREATED
+  ISSUE_STATUS_CHANGED
+  ISSUE_PRIORITY_CHANGED
+  ISSUE_ASSIGNED
+  ISSUE_LABELED
+  COMMENT_ADDED
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
 model User {
   id String @id @default(cuid())
 
   name  String
   email String @unique
 
-  /// A bcrypt hash -- never a plaintext password, and never returned to a
-  /// client. Nullable so a future OAuth-only user can exist without one.
+  /// A bcrypt hash -- never plaintext, never sent to a client. Nullable so a
+  /// future OAuth-only user can exist without one.
   passwordHash String?
 
   image String?
@@ -39,8 +71,290 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Postgres is case-sensitive, so "Aditya@x.com" and "aditya@x.com" would be
-  // two different rows under a plain @unique. We normalise to lowercase before
-  // every write and read instead of relying on the database to fold case.
+  memberships WorkspaceMember[]
+
+  /// Issue has TWO relations to User, so both must be named. Without the
+  /// @relation names Prisma cannot tell which foreign key belongs to which
+  /// field, and the schema will not validate.
+  createdIssues  Issue[] @relation("IssueCreator")
+  assignedIssues Issue[] @relation("IssueAssignee")
+
+  comments   Comment[]
+  activities Activity[]
+
   @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Workspaces and membership
+// ---------------------------------------------------------------------------
+
+model Workspace {
+  id String @id @default(cuid())
+
+  name String
+
+  /// Used in URLs (/w/acme-inc). Unique globally, because it appears in a path
+  /// segment that has no other scope to disambiguate it.
+  slug String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members    WorkspaceMember[]
+  projects   Project[]
+  labels     Label[]
+  activities Activity[]
+
+  @@map("workspaces")
+}
+
+/// The join table between User and Workspace -- written out EXPLICITLY.
+///
+/// Prisma can infer an implicit many-to-many if you just declare
+/// `members User[]` and `workspaces Workspace[]`. We deliberately do not,
+/// because membership carries DATA: a role, and when they joined. An implicit
+/// relation table has exactly two columns and no room for either.
+///
+/// This is the general rule worth remembering: the moment a relationship has
+/// its own attributes, it is an entity, not a link.
+model WorkspaceMember {
+  id String @id @default(cuid())
+
+  role     WorkspaceRole @default(MEMBER)
+  joinedAt DateTime      @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  /// Stops the same person being added to one workspace twice. Enforced by the
+  /// database, so no amount of concurrent requests can slip past it.
+  @@unique([userId, workspaceId])
+  /// "who belongs to this workspace" is the hot query; the @@unique above
+  /// already covers lookups starting with userId.
+  @@index([workspaceId])
+  @@map("workspace_members")
+}
+
+// ---------------------------------------------------------------------------
+// Projects
+// ---------------------------------------------------------------------------
+
+model Project {
+  id String @id @default(cuid())
+
+  name String
+
+  /// The prefix in an issue key: "FLOW" in FLOW-124. Short and uppercase.
+  key String
+
+  slug        String
+  description String?
+
+  /// Monotonic counter backing per-project issue numbers.
+  ///
+  /// Why store a counter instead of using count(*) + 1: two people creating an
+  /// issue at the same instant would both read the same count and both try to
+  /// claim FLOW-124. Incrementing this column is a single atomic UPDATE, so
+  /// the database serialises the two requests and each gets its own number.
+  issueCounter Int @default(0)
+
+  /// Archive rather than delete. Deleting a project would cascade away every
+  /// issue and comment in it -- almost never what someone means by "remove
+  /// this from my sidebar".
+  archivedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  issues Issue[]
+
+  /// Keys and slugs are unique WITHIN a workspace, not globally. Two different
+  /// companies can both have a project called "Web" with key "WEB".
+  @@unique([workspaceId, key])
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+  @@map("projects")
+}
+
+// ---------------------------------------------------------------------------
+// Issues
+// ---------------------------------------------------------------------------
+
+model Issue {
+  id String @id @default(cuid())
+
+  /// The numeric half of FLOW-124. Unique per project, not globally, which is
+  /// why it is a plain Int here and the constraint is composite below.
+  number Int
+
+  title       String
+  description String?
+
+  status   IssueStatus   @default(BACKLOG)
+  priority IssuePriority @default(NONE)
+
+  dueDate DateTime?
+
+  /// Position within its Kanban column, as a FLOAT rather than an Int.
+  ///
+  /// With integer positions, dropping a card between two others means
+  /// renumbering every row below it -- one drag, N writes. With floats you
+  /// insert at the midpoint of its neighbours (2.0 and 3.0 -> 2.5), so a drag
+  /// is a SINGLE row update. Stage 6 depends on this.
+  boardOrder Float @default(0)
+
+  /// Set when status becomes DONE. Denormalised on purpose: "completed this
+  /// week" is a dashboard query we run constantly, and deriving it from the
+  /// activity log every time would be far more expensive.
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  /// Both user links are NULLABLE and use SetNull, not Cascade.
+  ///
+  /// This is a product decision wearing technical clothes. Deleting a user must
+  /// not delete the work they did -- the issues they filed and were assigned
+  /// stay, and simply lose their attribution. Cascade here would silently
+  /// destroy project history when someone leaves the company.
+  creatorId String?
+  creator   User?   @relation("IssueCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+
+  assigneeId String?
+  assignee   User?   @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  comments   Comment[]
+  labels     IssueLabel[]
+  activities Activity[]
+
+  @@unique([projectId, number])
+  /// The Kanban board's query: issues for a project, grouped by status,
+  /// ordered within each column. A composite index in that exact order lets
+  /// Postgres satisfy it without a sort.
+  @@index([projectId, status, boardOrder])
+  @@index([assigneeId])
+  @@index([projectId, updatedAt])
+  @@map("issues")
+}
+
+// ---------------------------------------------------------------------------
+// Labels
+// ---------------------------------------------------------------------------
+
+model Label {
+  id String @id @default(cuid())
+
+  name String
+
+  /// A hex string. Deliberately not an enum: users will want their own
+  /// colours, and this is presentation rather than a domain value the database
+  /// should police.
+  color String
+
+  createdAt DateTime @default(now())
+
+  /// Labels belong to the WORKSPACE, not to a project, so the same "bug" label
+  /// can be applied across projects and reported on together.
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  issues IssueLabel[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("labels")
+}
+
+/// Issue <-> Label, also explicit.
+///
+/// This relationship carries no extra data today, so Prisma's implicit table
+/// would work. Written out anyway for two reasons: filtering issues by label
+/// is a core Stage 5 feature and an explicit table lets us choose our own
+/// indexes, and converting implicit -> explicit later is a data migration
+/// rather than a schema tweak. Cheaper to pay the verbosity now.
+model IssueLabel {
+  issueId String
+  issue   Issue  @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  labelId String
+  label   Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  addedAt DateTime @default(now())
+
+  /// A composite primary key: no surrogate id, and the pair cannot repeat.
+  @@id([issueId, labelId])
+  /// Reverse lookup -- "every issue carrying this label" -- which the primary
+  /// key's column order cannot serve.
+  @@index([labelId])
+  @@map("issue_labels")
+}
+
+// ---------------------------------------------------------------------------
+// Comments and activity
+// ---------------------------------------------------------------------------
+
+model Comment {
+  id String @id @default(cuid())
+
+  body String
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  /// Distinct from updatedAt, which any write touches. This is only set when a
+  /// human edits the text, so the UI can honestly show "edited".
+  editedAt  DateTime?
+
+  issueId String
+  issue   Issue  @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  /// SetNull again: a deleted user's comments survive as "deleted user", so a
+  /// discussion thread does not develop holes.
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([issueId, createdAt])
+  @@map("comments")
+}
+
+/// An append-only audit log. Rows are never updated.
+model Activity {
+  id String @id @default(cuid())
+
+  type ActivityType
+
+  /// Shape varies by `type` -- a status change stores from/to, a label event
+  /// stores a label name. Json avoids either a dozen mostly-null columns or a
+  /// separate table per event kind.
+  ///
+  /// The trade-off is real: Postgres cannot validate this, so the writer is
+  /// solely responsible for its shape. We keep it to display data only, never
+  /// anything the app must rely on to behave correctly.
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  actorId String?
+  actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  /// Nullable because not every activity concerns an issue -- project created,
+  /// member invited, and so on.
+  issueId String?
+  issue   Issue?  @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@index([issueId, createdAt])
+  @@map("activities")
 }

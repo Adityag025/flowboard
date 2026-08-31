@@ -12,6 +12,10 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
+    // Runs after `prisma migrate dev` / `migrate reset`. tsx is needed because
+    // Node's ESM resolver demands explicit file extensions and Prisma's
+    // generated client imports "./enums" without one.
+    seed: "tsx prisma/seed.ts",
   },
   datasource: {
     url: process.env["DATABASE_URL"],

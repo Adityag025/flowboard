@@ -1,0 +1,62 @@
+import type { BadgeVariant } from "@/components/ui/badge";
+import { IssuePriority, IssueStatus } from "@/generated/prisma/enums";
+
+/**
+ * The translation layer between database enums and what a human reads.
+ *
+ * Why this file exists at all: the database stores IN_PROGRESS because SCREAMING
+ * _SNAKE is the Postgres enum convention, but no user should ever see that. The
+ * mapping lives in ONE place so a rename is a single edit, rather than a
+ * find-and-replace across every component that happens to render a status.
+ *
+ * `satisfies Record<IssueStatus, ...>` is the load-bearing part. Add a value to
+ * the enum in schema.prisma and forget to add it here, and the BUILD fails
+ * rather than the UI silently rendering an empty badge in production.
+ */
+
+export const statusLabels = {
+  [IssueStatus.BACKLOG]: "Backlog",
+  [IssueStatus.TODO]: "Todo",
+  [IssueStatus.IN_PROGRESS]: "In Progress",
+  [IssueStatus.DONE]: "Done",
+  [IssueStatus.CANCELED]: "Canceled",
+} satisfies Record<IssueStatus, string>;
+
+export const statusVariants = {
+  [IssueStatus.BACKLOG]: "neutral",
+  [IssueStatus.TODO]: "slate",
+  [IssueStatus.IN_PROGRESS]: "amber",
+  [IssueStatus.DONE]: "emerald",
+  [IssueStatus.CANCELED]: "neutral",
+} satisfies Record<IssueStatus, BadgeVariant>;
+
+export const priorityLabels = {
+  [IssuePriority.NONE]: "No priority",
+  [IssuePriority.LOW]: "Low",
+  [IssuePriority.MEDIUM]: "Medium",
+  [IssuePriority.HIGH]: "High",
+  [IssuePriority.URGENT]: "Urgent",
+} satisfies Record<IssuePriority, string>;
+
+export const priorityVariants = {
+  [IssuePriority.NONE]: "neutral",
+  [IssuePriority.LOW]: "slate",
+  [IssuePriority.MEDIUM]: "sky",
+  [IssuePriority.HIGH]: "orange",
+  [IssuePriority.URGENT]: "red",
+} satisfies Record<IssuePriority, BadgeVariant>;
+
+/** "FLOW" + 124 -> "FLOW-124" */
+export function issueKey(projectKey: string, number: number): string {
+  return `${projectKey}-${number}`;
+}
+
+/**
+ * Statuses that count as "open". Used by dashboard counts and default filters.
+ * Named once so the definition of open cannot drift between two queries.
+ */
+export const OPEN_STATUSES = [
+  IssueStatus.BACKLOG,
+  IssueStatus.TODO,
+  IssueStatus.IN_PROGRESS,
+] as const;
