@@ -42,3 +42,13 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# AI agent skill files. `prisma init` downloads ~70 instruction files from
+# github.com/prisma/skills into these paths and symlinks them where coding
+# agents auto-load them. We removed them and ignore the paths so a future
+# `prisma init` or `prisma generate` cannot silently reintroduce instructions
+# for our tooling. Prisma's real documentation is on their site.
+/.agents/
+/.claude/
+/.windsurf/
+/skills-lock.json
