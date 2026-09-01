@@ -62,26 +62,30 @@ export default async function DashboardPage() {
   };
 
   /**
-   * $transaction batches these into ONE round trip and one consistent
-   * snapshot. Four sequential awaits would mean four round trips, and the
-   * counts could disagree with the list if someone edited an issue in between.
+   * One transaction, so the counts and the list share a single consistent
+   * snapshot -- otherwise an edit landing between queries makes the numbers
+   * disagree with the rows beneath them.
+   *
+   * The interactive form, which lets us name the four results instead of
+   * destructuring a positional array -- easy to get subtly wrong when three of
+   * them are counts.
    */
-  const [openCount, inProgressCount, completedThisWeek, recentIssues] =
-    await db.$transaction([
-      db.issue.count({
+  const { openCount, inProgressCount, completedThisWeek, recentIssues } =
+    await db.$transaction(async (tx) => {
+      const openCount = await tx.issue.count({
         where: { ...visibleIssues, status: { in: [...OPEN_STATUSES] } },
-      }),
-      db.issue.count({
+      });
+      const inProgressCount = await tx.issue.count({
         where: { ...visibleIssues, status: IssueStatus.IN_PROGRESS },
-      }),
-      db.issue.count({
+      });
+      const completedThisWeek = await tx.issue.count({
         where: {
           ...visibleIssues,
           status: IssueStatus.DONE,
           completedAt: { gte: startOfWeek() },
         },
-      }),
-      db.issue.findMany({
+      });
+      const recentIssues = await tx.issue.findMany({
         where: visibleIssues,
         orderBy: { updatedAt: "desc" },
         take: 5,
@@ -103,8 +107,10 @@ export default async function DashboardPage() {
           project: { select: { key: true } },
           labels: { select: { label: { select: { id: true, name: true } } } },
         },
-      }),
-    ]);
+      });
+
+      return { openCount, inProgressCount, completedThisWeek, recentIssues };
+    });
 
   const stats = [
     { label: "Open Issues", value: openCount },

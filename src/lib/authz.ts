@@ -95,11 +95,6 @@ export async function requireProjectAccess(projectId: string, userId: string) {
   return project;
 }
 
-/** Workspace ids the user belongs to. The scope for every list query. */
-export async function workspaceIdsFor(userId: string): Promise<string[]> {
-  const memberships = await db.workspaceMember.findMany({
-    where: { userId },
-    select: { workspaceId: true },
-  });
-  return memberships.map((membership) => membership.workspaceId);
-}
+// workspaceIdsFor used to live here. It moved to lib/queries/workspaces.ts
+// because it needs only the database, and keeping it in this module forced every
+// importer to inherit next-auth and next/navigation as well.

@@ -6,7 +6,8 @@ import { IssueRow } from "@/components/issues/issue-row";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { requireUser } from "@/lib/authz";
-import { getFormOptions, listIssues } from "@/lib/queries/issues";
+import { decodeCursor } from "@/lib/pagination";
+import { ISSUES_PER_PAGE, getFormOptions, listIssues } from "@/lib/queries/issues";
 import {
   issuePrioritySchema,
   issueStatusSchema,
@@ -44,10 +45,41 @@ export default async function IssuesPage({
     q: single(params.q)?.trim() || undefined,
   };
 
-  const [{ issues, total }, options] = await Promise.all([
-    listIssues(user.id, filters),
+  const cursorParam = single(params.cursor);
+  const cursor = decodeCursor(cursorParam);
+  const isPaged = cursor !== null;
+
+  const [{ issues, total, nextCursor }, options] = await Promise.all([
+    listIssues(user.id, filters, { cursor }),
     getFormOptions(user.id),
   ]);
+
+  /**
+   * Filters must survive paging, and the cursor must NOT survive a filter
+   * change -- a cursor from the unfiltered list is meaningless once the filter
+   * narrows the set. IssueFilters drops `cursor` when it sets any other param
+   * for exactly this reason.
+   */
+  const nextHref = (() => {
+    if (!nextCursor) return null;
+    const next = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (key === "cursor" || value === undefined) continue;
+      next.set(key, Array.isArray(value) ? (value[0] ?? "") : value);
+    }
+    next.set("cursor", nextCursor);
+    return `/issues?${next.toString()}`;
+  })();
+
+  const firstPageHref = (() => {
+    const first = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (key === "cursor" || value === undefined) continue;
+      first.set(key, Array.isArray(value) ? (value[0] ?? "") : value);
+    }
+    const query = first.toString();
+    return query ? `/issues?${query}` : "/issues";
+  })();
 
   return (
     <div className="space-y-6">
@@ -56,7 +88,8 @@ export default async function IssuesPage({
           <h1 className="text-2xl font-semibold tracking-tight">Issues</h1>
           <p className="text-sm text-muted">
             {total} {total === 1 ? "issue" : "issues"}
-            {issues.length < total && ` (showing ${issues.length})`}
+            {(nextCursor || isPaged) &&
+              ` · showing ${issues.length} per page`}
           </p>
         </div>
 
@@ -82,13 +115,51 @@ export default async function IssuesPage({
           </p>
         </Card>
       ) : (
-        <Card className="p-0">
-          <ul className="divide-y divide-border">
-            {issues.map((issue) => (
-              <IssueRow key={issue.id} issue={issue} />
-            ))}
-          </ul>
-        </Card>
+        <>
+          <Card className="p-0">
+            <ul className="divide-y divide-border">
+              {issues.map((issue) => (
+                <IssueRow key={issue.id} issue={issue} />
+              ))}
+            </ul>
+          </Card>
+
+          {/*
+            Plain links, not a "Load more" button.
+
+            Appending rows client-side would force IssueRow to become a Client
+            Component -- it is currently server-rendered and ships zero JS -- to
+            gain infinite scroll on a list people filter rather than scroll.
+            Links keep every row on the server, work without JavaScript, and
+            each page is a real URL you can share.
+
+            There is no "Previous": keyset pagination only walks forward. The
+            browser Back button IS the previous page, because each page has its
+            own URL.
+          */}
+          {(nextCursor || isPaged) && (
+            <nav className="flex items-center justify-between gap-3 text-sm">
+              {isPaged ? (
+                <Link
+                  href={firstPageHref}
+                  className="text-muted transition-colors hover:text-foreground"
+                >
+                  &larr; First page
+                </Link>
+              ) : (
+                <span />
+              )}
+
+              {nextHref ? (
+                <Link href={nextHref} className="text-accent hover:underline">
+                  Next {ISSUES_PER_PAGE} &rarr;
+                </Link>
+              ) : (
+                <span className="text-muted opacity-70">End of results</span>
+              )}
+            </nav>
+          )}
+        </>
       )}
     </div>
   );

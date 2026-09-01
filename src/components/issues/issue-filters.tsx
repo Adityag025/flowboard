@@ -42,6 +42,15 @@ export function IssueFilters({
       // Drop the key entirely rather than leaving ?status= in the URL.
       params.delete(key);
     }
+    /**
+     * Any filter change resets pagination.
+     *
+     * A cursor points at a specific row in a specific ordered set. Change the
+     * filter and that set changes, so the old cursor either skips rows that
+     * should now be first or lands past the end and shows an empty page. Both
+     * look like data loss to the user.
+     */
+    params.delete("cursor");
     startTransition(() => {
       router.push(`/issues?${params.toString()}`);
     });

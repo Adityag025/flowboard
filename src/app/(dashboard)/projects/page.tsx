@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Card } from "@/components/ui/card";
-import { requireUser, workspaceIdsFor } from "@/lib/authz";
+import { requireUser } from "@/lib/authz";
+import { workspaceIdsFor } from "@/lib/queries/workspaces";
 import { db } from "@/lib/db";
 import { OPEN_STATUSES } from "@/lib/issues";
 

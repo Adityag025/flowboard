@@ -1,7 +1,8 @@
 import { Prisma } from "@/generated/prisma/client";
 import { IssuePriority, IssueStatus } from "@/generated/prisma/enums";
-import { workspaceIdsFor } from "@/lib/authz";
+import { workspaceIdsFor } from "@/lib/queries/workspaces";
 import { db } from "@/lib/db";
+import { cursorFilter, encodeCursor, type Cursor } from "@/lib/pagination";
 
 export type IssueFilters = {
   status?: IssueStatus;
@@ -65,28 +66,78 @@ const issueListSelect = {
 
 export type IssueListItem = Prisma.IssueGetPayload<{ select: typeof issueListSelect }>;
 
-export async function listIssues(userId: string, filters: IssueFilters, take = 50) {
+export const ISSUES_PER_PAGE = 25;
+
+export type IssuePage = {
+  issues: IssueListItem[];
+  total: number;
+  /** Pass back as ?cursor= to get the next page. null means this is the last. */
+  nextCursor: string | null;
+};
+
+export async function listIssues(
+  userId: string,
+  filters: IssueFilters,
+  options: { cursor?: Cursor | null; take?: number } = {},
+): Promise<IssuePage> {
   const workspaceIds = await workspaceIdsFor(userId);
   if (workspaceIds.length === 0) {
-    return { issues: [] as IssueListItem[], total: 0 };
+    return { issues: [], total: 0, nextCursor: null };
   }
 
-  const where = issueWhere(workspaceIds, filters);
+  const take = options.take ?? ISSUES_PER_PAGE;
+  const base = issueWhere(workspaceIds, filters);
 
-  // One transaction: the count and the page cannot disagree.
-  const [issues, total] = await db.$transaction([
-    db.issue.findMany({
+  // The cursor NARROWS the already-scoped query; it is ANDed with the workspace
+  // filter, never merged in a way that could replace it.
+  const where = options.cursor
+    ? { AND: [base, cursorFilter(options.cursor)] }
+    : base;
+
+  /**
+   * The INTERACTIVE transaction form, so this can return a shaped object and
+   * keep the page/count logic readable. Same single consistent snapshot as the
+   * array form.
+   *
+   * Note for anyone chasing it: node-postgres logs a deprecation warning
+   * ("client.query() when the client is already executing a query") on Prisma
+   * transactions. It is NOT caused by the array form of $transaction -- switching
+   * away from it does not silence the warning. The stack sits entirely inside
+   * @prisma/adapter-pg's PgTransaction.performIO, i.e. upstream. Verified with
+   * --trace-deprecation.
+   */
+  const { rows, total } = await db.$transaction(async (tx) => {
+    const rows = await tx.issue.findMany({
       where,
       select: issueListSelect,
-      // Secondary sort on id so pagination is stable when two rows share a
-      // timestamp -- otherwise the same row can appear on two pages.
+      // The id tiebreaker is load-bearing for pagination, not cosmetic: without
+      // it, two issues sharing a millisecond make the page boundary ambiguous
+      // and the seam row repeats or vanishes.
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-      take,
-    }),
-    db.issue.count({ where }),
-  ]);
+      // Fetch ONE more than we need. If it comes back, there is another page --
+      // which is cheaper and more accurate than comparing against a total that
+      // may have changed since it was counted.
+      take: take + 1,
+    });
 
-  return { issues, total };
+    // `total` counts the whole filtered set, not the page. It is a separate
+    // count() and gets slower on very large tables; if that ever matters,
+    // switch to an approximate count rather than dropping the cursor.
+    const total = await tx.issue.count({ where: base });
+
+    return { rows, total };
+  });
+
+  const hasMore = rows.length > take;
+  const issues = hasMore ? rows.slice(0, take) : rows;
+  const last = issues.at(-1);
+
+  return {
+    issues,
+    total,
+    nextCursor:
+      hasMore && last ? encodeCursor({ updatedAt: last.updatedAt, id: last.id }) : null,
+  };
 }
 
 /** Everything the detail page renders, in ONE query rather than five. */
@@ -149,22 +200,23 @@ export async function getFormOptions(userId: string) {
     return { projects: [], labels: [], members: [] };
   }
 
-  const [projects, labels, memberships] = await db.$transaction([
-    db.project.findMany({
+  const { projects, labels, memberships } = await db.$transaction(async (tx) => {
+    const projects = await tx.project.findMany({
       where: { workspaceId: { in: workspaceIds }, archivedAt: null },
       select: { id: true, name: true, key: true },
       orderBy: { name: "asc" },
-    }),
-    db.label.findMany({
+    });
+    const labels = await tx.label.findMany({
       where: { workspaceId: { in: workspaceIds } },
       select: { id: true, name: true, color: true },
       orderBy: { name: "asc" },
-    }),
-    db.workspaceMember.findMany({
+    });
+    const memberships = await tx.workspaceMember.findMany({
       where: { workspaceId: { in: workspaceIds } },
       select: { user: { select: { id: true, name: true } } },
-    }),
-  ]);
+    });
+    return { projects, labels, memberships };
+  });
 
   // The same person can be in two of our workspaces; show them once.
   const members = [...new Map(memberships.map((m) => [m.user.id, m.user])).values()].sort(

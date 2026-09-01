@@ -8,7 +8,8 @@ import { IssuePriority } from "@/generated/prisma/enums";
 import { AIUnavailableError, AI_MODEL, getAIClient } from "@/lib/ai/client";
 import { DRAFT_SYSTEM, buildDraftUserMessage } from "@/lib/ai/prompts";
 import { checkRateLimit } from "@/lib/ai/rate-limit";
-import { requireUserId, workspaceIdsFor } from "@/lib/authz";
+import { requireUserId } from "@/lib/authz";
+import { workspaceIdsFor } from "@/lib/queries/workspaces";
 import { db } from "@/lib/db";
 
 /**

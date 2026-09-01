@@ -256,9 +256,9 @@ export async function toggleLabelAction(input: { issueId: string; labelId: strin
         where: { issueId_labelId: { issueId, labelId } },
       });
     } else {
-      await db.$transaction([
-        db.issueLabel.create({ data: { issueId, labelId } }),
-        db.activity.create({
+      await db.$transaction(async (tx) => {
+        await tx.issueLabel.create({ data: { issueId, labelId } });
+        await tx.activity.create({
           data: {
             type: ActivityType.ISSUE_LABELED,
             workspaceId: issue.project.workspaceId,
@@ -266,8 +266,8 @@ export async function toggleLabelAction(input: { issueId: string; labelId: strin
             issueId,
             metadata: { label: label.name },
           },
-        }),
-      ]);
+        });
+      });
     }
 
     revalidatePath(`/issues/${issue.project.key}-${issue.number}`);
@@ -303,17 +303,17 @@ export async function addCommentAction(
     const { issueId, body } = parsed.data;
     const issue = await requireIssueAccess(issueId, userId);
 
-    await db.$transaction([
-      db.comment.create({ data: { issueId, authorId: userId, body } }),
-      db.activity.create({
+    await db.$transaction(async (tx) => {
+      await tx.comment.create({ data: { issueId, authorId: userId, body } });
+      await tx.activity.create({
         data: {
           type: ActivityType.COMMENT_ADDED,
           workspaceId: issue.project.workspaceId,
           actorId: userId,
           issueId,
         },
-      }),
-    ]);
+      });
+    });
 
     revalidatePath(`/issues/${issue.project.key}-${issue.number}`);
     return null;
