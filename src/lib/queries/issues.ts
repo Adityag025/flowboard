@@ -110,6 +110,7 @@ export async function getIssueByKey(userId: string, projectKey: string, number: 
       createdAt: true,
       updatedAt: true,
       completedAt: true,
+      aiSummary: true,
       project: {
         select: { id: true, key: true, name: true, workspaceId: true },
       },

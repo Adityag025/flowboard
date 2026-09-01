@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { IssuePriority, IssueStatus } from "@/generated/prisma/enums";
+import type { IssueDraft } from "@/lib/actions/ai";
 import { createIssueAction, type IssueFormState } from "@/lib/actions/issues";
 import { priorityLabels, statusLabels } from "@/lib/issues";
 
@@ -18,11 +19,19 @@ export function CreateIssueForm({
   projects,
   labels,
   members,
+  draft = null,
 }: {
   projects: Array<{ id: string; name: string; key: string }>;
   labels: Array<{ id: string; name: string; color: string }>;
   members: Option[];
+  /**
+   * Optional AI-generated starting values. Every field stays editable -- the
+   * draft is a starting point the user reviews, never a submission. The form is
+   * remounted by its parent when a new draft arrives; see NewIssuePanel.
+   */
+  draft?: IssueDraft | null;
 }) {
+  const draftLabelIds = new Set(draft?.labelIds ?? []);
   const [state, formAction] = useActionState<IssueFormState, FormData>(
     createIssueAction,
     null,
@@ -37,6 +46,7 @@ export function CreateIssueForm({
           required
           maxLength={200}
           autoFocus
+          defaultValue={draft?.title ?? ""}
           placeholder="Something short and specific"
           aria-invalid={Boolean(state?.fieldErrors?.title)}
         />
@@ -51,6 +61,7 @@ export function CreateIssueForm({
           id="description"
           name="description"
           rows={5}
+          defaultValue={draft?.description ?? ""}
           placeholder="What is happening, and what should happen instead?"
         />
       </Field>
@@ -88,7 +99,11 @@ export function CreateIssueForm({
         </Field>
 
         <Field id="priority" label="Priority" errors={state?.fieldErrors?.priority}>
-          <Select id="priority" name="priority" defaultValue={IssuePriority.NONE}>
+          <Select
+            id="priority"
+            name="priority"
+            defaultValue={draft?.priority ?? IssuePriority.NONE}
+          >
             {Object.values(IssuePriority).map((priority) => (
               <option key={priority} value={priority}>
                 {priorityLabels[priority]}
@@ -113,6 +128,7 @@ export function CreateIssueForm({
                   type="checkbox"
                   name="labelIds"
                   value={label.id}
+                  defaultChecked={draftLabelIds.has(label.id)}
                   className="size-3.5 accent-accent"
                 />
                 <span style={{ color: label.color }}>{label.name}</span>

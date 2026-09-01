@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { IssueSummary } from "@/components/ai/issue-summary";
 import { CommentForm } from "@/components/issues/comment-form";
 import { IssueControls } from "@/components/issues/issue-controls";
 import { LabelPicker } from "@/components/issues/label-picker";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { describeActivity, relativeTime } from "@/lib/activity";
+import { isAIConfigured } from "@/lib/ai/client";
 import { requireUser } from "@/lib/authz";
 import {
   issueKey,
@@ -67,7 +69,7 @@ export default async function IssueDetailPage({ params }: Params) {
         <span className="font-mono text-xs">{displayKey}</span>
       </nav>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_260px]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
         {/* Main column */}
         <div className="min-w-0 space-y-6">
           <header className="space-y-3">
@@ -144,6 +146,12 @@ export default async function IssueDetailPage({ params }: Params) {
 
         {/* Sidebar */}
         <aside className="space-y-6">
+          <IssueSummary
+            issueId={issue.id}
+            cachedSummary={issue.aiSummary}
+            aiConfigured={isAIConfigured()}
+          />
+
           <Card className="space-y-4">
             <IssueControls
               issueId={issue.id}

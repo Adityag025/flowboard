@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { CreateIssueForm } from "@/components/issues/create-issue-form";
+import { NewIssuePanel } from "@/components/issues/new-issue-panel";
+import { isAIConfigured } from "@/lib/ai/client";
 import { Card } from "@/components/ui/card";
 import { requireUser } from "@/lib/authz";
 import { getFormOptions } from "@/lib/queries/issues";
@@ -36,7 +37,13 @@ export default async function NewIssuePage() {
         </Card>
       ) : (
         <Card>
-          <CreateIssueForm
+          {/*
+            isAIConfigured() runs on the SERVER and only a boolean crosses to the
+            client. The key itself never leaves the server -- which is the whole
+            reason ANTHROPIC_API_KEY has no NEXT_PUBLIC_ prefix.
+          */}
+          <NewIssuePanel
+            aiConfigured={isAIConfigured()}
             projects={options.projects}
             labels={options.labels}
             members={options.members}

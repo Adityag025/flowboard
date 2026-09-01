@@ -218,6 +218,22 @@ model Issue {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Cached AI summary.
+  ///
+  /// An LLM call costs money and takes seconds, and an issue's summary does not
+  /// change unless the issue does -- so it is stored rather than regenerated on
+  /// every view. Without this, ten people opening the same issue would pay for
+  /// ten identical summaries.
+  aiSummary   String?
+  aiSummaryAt DateTime?
+
+  /// Hash of the exact content the cached summary was generated from (title,
+  /// description, comment bodies). Comparing hashes is what makes the cache
+  /// CORRECT rather than merely fast: `updatedAt` changes when someone drags
+  /// the card across the board, which does not invalidate a summary, while a
+  /// new comment does. Hashing the inputs distinguishes the two.
+  aiSummaryHash String?
+
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
