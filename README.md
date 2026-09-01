@@ -9,9 +9,10 @@ build, developed in stages as a learning project.
 > 115 tests and CI. Remaining: realtime, background jobs, logging/monitoring,
 > and deployment.
 
-> **Note:** the AI features work with any provider. The OpenAI-compatible
-> adapter is verified end to end against a local server, but **the Anthropic
-> path has never made a live call** — no key was available where it was written.
+> **Note:** the AI features run on a **free local model by default** (Ollama,
+> no account and no per-request cost) and are verified end to end against it.
+> The Anthropic path is implemented but has never made a live call — no key was
+> available where it was written.
 
 ## Stack
 
@@ -51,6 +52,53 @@ Sign up in the browser, then give yourself sample issues:
 ```bash
 npm run db:seed                     # idempotent; safe to re-run
 ```
+
+## AI with no API key and no cost
+
+The default configuration uses [Ollama](https://ollama.com), which runs a model
+on your own machine. No account, no key, no per-request billing, works offline.
+
+```bash
+ollama serve            # if it is not already running
+npm run ai:pull         # downloads qwen2.5:3b (~1.9 GB)
+npm run ai:check        # confirms the provider is configured and reachable
+```
+
+`.env.local` then needs:
+
+```ini
+AI_PROVIDER="openai"
+AI_API_KEY="ollama"     # ignored by Ollama, but must be non-empty
+AI_MODEL="qwen2.5:3b"
+AI_BASE_URL="http://localhost:11434/v1"
+```
+
+`npm run ai:check` exists because "not configured" has several distinct causes —
+no key, a typo in `AI_PROVIDER`, a model that was never pulled, Ollama not
+running — and they are indistinguishable from the UI. It only probes endpoints
+that are free to probe; hitting a paid provider for a health check would bill you
+for it.
+
+**Measured on this setup** (qwen2.5:3b, CPU):
+
+| | |
+| --- | --- |
+| Summarize, generated | ~16 s |
+| Summarize, cached | ~37 ms |
+| Cache speedup | **≈430×** |
+
+That ratio is the empirical case for the summary cache. It would be worth having
+against a fast hosted provider; against a local model on CPU it is the difference
+between a usable feature and an unusable one.
+
+**Quality at 3B is decent but not free of tells.** The summary respected the
+two-paragraph structure and declined to invent a root cause, but ran ~110 words
+against a 90-word instruction. The issue drafter produced a sensible title,
+priority and labels, but added "data loss" to a description whose input never
+mentioned it. Both are ordinary small-model behaviour — worth knowing before
+trusting output unreviewed, and the reason the draft fills in a form you review
+rather than creating the issue directly. A larger local model
+(`qwen2.5:7b`, `llama3.1:8b`) or a hosted one follows instructions more closely.
 
 ## Tests
 

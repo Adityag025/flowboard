@@ -16,7 +16,9 @@
     "test:db": "vitest run tests/",
     "test:all": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "ai:pull": "ollama pull ${AI_MODEL:-qwen2.5:3b}",
+    "ai:check": "node scripts/ai-check.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",
