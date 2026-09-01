@@ -3,9 +3,9 @@
 Issue tracking and project management for small teams — a Linear-inspired
 build, developed in stages as a learning project.
 
-> **Status: in progress.** Authentication works and the full domain schema is
-> live -- the dashboard reads real issues, labels and counts from Postgres.
-> There is no UI yet for creating or editing issues; that is Stage 5.
+> **Status: in progress.** You can sign up, create issues, assign them, set
+> priorities, add labels, comment, and filter the list. The Kanban board with
+> drag-and-drop is next.
 
 ## Stack
 
@@ -67,6 +67,9 @@ URL, and letting Next pick the first free port made it move between restarts.
 - `src/proxy.ts` — route protection. Next 16 renamed `middleware.ts` to
   `proxy.ts`. It is a gate, not the security boundary: every protected page
   re-checks `auth()` itself.
+- `src/lib/authz.ts` — the real authorization boundary. See below.
+- `src/lib/queries/` — read paths, shared between pages.
+- `src/lib/actions/` — write paths, as Server Actions.
 - `src/lib/db.ts` — Prisma client singleton, cached on `globalThis`. Next
   hot-reloads modules on every save; a plain module constant would open a fresh
   connection pool per reload until Postgres refused connections.
@@ -74,6 +77,34 @@ URL, and letting Next pick the first free port made it move between restarts.
   guarded by `satisfies` so a new enum value without a label fails the build.
 - Design tokens live in `@theme inline` inside `src/app/globals.css`. Tailwind 4
   is CSS-first; there is no `tailwind.config.js`.
+
+### Security: Server Actions are public endpoints
+
+This is the single most important thing to understand in this codebase. A Server
+Action compiles to a **public HTTP endpoint**. React gives it an opaque id and
+posts to it, but nothing stops anyone crafting that request by hand with any
+arguments they like. "The button is only rendered for members" is a hint to
+well-behaved browsers, not access control.
+
+So every action independently establishes who is calling and whether they may
+touch that specific row, and **never trusts an id from the payload**:
+
+```ts
+const userId  = await requireUserId();               // who
+const project = await requireProjectAccess(id, userId); // may they?
+```
+
+Membership goes *inside* the `WHERE` clause, so a non-member's row is never
+returned — rather than fetched and then filtered in JavaScript, where one
+forgotten `if` becomes a data leak. Misses return "not found", never
+"forbidden", because distinguishing the two confirms a row exists in someone
+else's workspace.
+
+Tenant isolation is asserted as a regression test:
+
+```bash
+npm run check:isolation
+```
 
 ### Data model notes
 
@@ -104,7 +135,7 @@ URL, and letting Next pick the first free port made it move between restarts.
 - [x] **2. UI architecture** — app shell, responsive layout, server/client split
 - [x] **3. Authentication** — Auth.js, sessions, protected routes, logout
 - [x] **4. Database** — PostgreSQL + Prisma, full domain schema, seeded
-- [ ] **5. Issue management** — CRUD, assignees, priorities, labels
+- [x] **5. Issue management** — create, assign, prioritise, label, comment, filter
 - [ ] **6. Kanban board** — drag and drop with optimistic updates
 - [ ] **7. AI layer** — issue summaries, generation, semantic search
 - [ ] **8. Production** — Redis, rate limiting, WebSockets, tests, CI/CD
@@ -114,10 +145,18 @@ URL, and letting Next pick the first free port made it move between restarts.
 - The dashboard greeting uses the **server's** clock, not the visitor's, so it
   is wrong for users in other timezones. Correct fix is a timezone on the user
   profile.
-- There is no UI for creating, editing or assigning issues yet — the seed
-  script is currently the only way to get data in.
+- Full-text search uses `contains` / ILIKE, which cannot use a btree index. Fine
+  at this scale; Stage 8 replaces it with `tsvector` + GIN rather than
+  pretending it scales.
+- The issue list caps at 50 rows with no pagination yet.
+- There is no UI for creating projects, labels or workspaces — the seed script
+  handles those.
+- Issue titles and descriptions cannot be edited after creation yet.
 - The mobile drawer's open/close logic is verified, but its rendering at a real
   mobile viewport is not.
+- `pg` logs a deprecation warning about concurrent `client.query()` calls from
+  array-form `$transaction`. Harmless today; worth revisiting when moving to
+  `pg@9`.
 - One dev-only advisory is accepted rather than fixed: `deepmerge-ts` stack
   exhaustion, reachable only through the `prisma` CLI. npm's suggested remedy
   is a downgrade to Prisma 6.
