@@ -31,6 +31,27 @@ export const authConfig = {
 
   pages: {
     signIn: "/login",
+
+    /**
+     * WITHOUT THIS, EVERY AUTH FAILURE IS AN OPAQUE 500.
+     *
+     * Auth.js redirects failures it cannot express inline to /api/auth/error.
+     * Once `pages` is customised at all, its built-in error page is disabled --
+     * so that route hits the catch-all handler, which reports
+     * "UnknownAction: Cannot handle action: error" and returns a 500. The user
+     * sees a blank "A server error occurred" page with no way forward.
+     *
+     * Found in production when the database was unreachable: authorize() threw,
+     * Auth.js redirected to /api/auth/error, and that 500'd. The missing
+     * database was the trigger, but this would fire the same way for a
+     * transient database blip, a bad AUTH_SECRET, or any provider
+     * misconfiguration -- i.e. exactly the moments you most need a legible
+     * error.
+     *
+     * Pointing it back at /login means failures land on the form the user was
+     * already using, with ?error=<code> for it to explain.
+     */
+    error: "/login",
   },
 
   callbacks: {

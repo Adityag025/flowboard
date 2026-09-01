@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { AuthError } from "@/components/auth/auth-error";
 import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = {
@@ -14,9 +15,9 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; error?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, error } = await searchParams;
 
   return (
     <div className="space-y-6">
@@ -24,6 +25,9 @@ export default async function LoginPage({
         <h1 className="text-lg font-semibold tracking-tight">Welcome back</h1>
         <p className="text-sm text-muted">Sign in to continue to FlowBoard.</p>
       </div>
+
+      {/* Populated when Auth.js redirects a failure here via pages.error. */}
+      <AuthError code={error} />
 
       <LoginForm next={next} />
     </div>

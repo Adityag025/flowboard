@@ -19,7 +19,14 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts", "src/**/*.dbtest.ts", "tests/**/*.dbtest.ts"],
+    // .tsx as well as .ts -- component tests exist and were silently not being
+    // collected, which is the worst failure mode for a test suite: green because
+    // nothing ran.
+    include: [
+      "src/**/*.test.{ts,tsx}",
+      "src/**/*.dbtest.ts",
+      "tests/**/*.dbtest.ts",
+    ],
     // The DB tests share one Postgres instance and one seeded workspace, so
     // running files in parallel would have them fighting over the same rows.
     fileParallelism: false,
