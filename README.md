@@ -387,6 +387,41 @@ looser bound still stops the cases that occur. "No limit at all" was never an
 option. `RateLimitResult.backend` reports which one answered, so a degraded
 limiter is visible rather than silent.
 
+### The node-postgres overlap warning, and why it mattered
+
+For several stages the app emitted:
+
+> `client.query()` when the client is already executing a query is deprecated
+> and will be removed in pg@9.0
+
+I twice wrote this off — first blaming the array form of `$transaction` (wrong,
+changing it didn't help), then calling it upstream because the stack was entirely
+inside `@prisma/adapter-pg` (true, but a stack tells you *where*, not *why*).
+
+Isolating it by experiment gave a precise trigger:
+
+| Pattern | Result |
+| --- | --- |
+| `findMany` **with relations**, followed by another query, in the **same transaction** | **warns** |
+| the same `findMany` with nothing after it in the transaction | clean |
+| the same `findMany` outside a transaction | clean |
+| a scalar-only `findMany` plus another query in a transaction | clean |
+
+Prisma's query interpreter issues several queries to load relations, and a
+following query in the same transaction overlaps them on that transaction's
+single connection. Separate pooled queries each get their own connection.
+
+This was not cosmetic: **pg@9 removes the behaviour**, so it was a thrown error
+waiting for a dependency bump.
+
+The fix was to stop wrapping `listIssues`' page and count in one transaction.
+The cost is that `total` and the rows no longer share a snapshot, so a
+concurrent insert can make the count disagree by one — acceptable, because
+`total` is a display number and `nextCursor` comes from the rows, not the count.
+
+`tests/no-pg-warning.dbtest.ts` fails if this returns, because a comment saying
+"don't wrap these in a transaction" is one refactor away from being ignored.
+
 ### Data model notes
 
 - **`WorkspaceMember` is an explicit join table**, not an implicit many-to-many,
@@ -443,10 +478,7 @@ limiter is visible rather than silent.
   ingest, but there are no counters or spans.
 - Not deployed anywhere. The container image is built and verified against real
   Postgres and Redis locally, but nothing runs in a hosted environment.
-- `next dev` and `next build` emit a node-postgres deprecation warning
-  (`client.query()` while already executing). The stack is entirely inside
-  `@prisma/adapter-pg`, i.e. upstream — it is *not* caused by the array form of
-  `$transaction`, which was the obvious suspect and does not fix it.
+- ~~node-postgres deprecation warning~~ — **fixed.** See below.
 - Summaries are cached but never expire; only a content change regenerates one.
 - There is no UI for creating projects, labels or workspaces — the seed script
   handles those.

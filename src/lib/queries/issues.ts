@@ -95,19 +95,40 @@ export async function listIssues(
     : base;
 
   /**
-   * The INTERACTIVE transaction form, so this can return a shaped object and
-   * keep the page/count logic readable. Same single consistent snapshot as the
-   * array form.
+   * The page and the count run as TWO POOLED QUERIES, deliberately NOT wrapped
+   * in one transaction.
    *
-   * Note for anyone chasing it: node-postgres logs a deprecation warning
-   * ("client.query() when the client is already executing a query") on Prisma
-   * transactions. It is NOT caused by the array form of $transaction -- switching
-   * away from it does not silence the warning. The stack sits entirely inside
-   * @prisma/adapter-pg's PgTransaction.performIO, i.e. upstream. Verified with
-   * --trace-deprecation.
+   * They used to share a transaction, for a consistent snapshot. That combination
+   * triggers node-postgres's "client.query() when the client is already executing
+   * a query" deprecation -- which pg@9 turns into a thrown error, so this was a
+   * latent breakage, not just log noise.
+   *
+   * The precise trigger, isolated by experiment:
+   *
+   *   findMany WITH RELATIONS, followed by another query, in the SAME
+   *   transaction  -> warns
+   *   the same findMany with nothing after it              -> clean
+   *   the same findMany outside a transaction              -> clean
+   *   a scalar-only findMany plus another query in a tx    -> clean
+   *
+   * Prisma's query interpreter issues several queries to load relations, and a
+   * following query in the same transaction overlaps them on that transaction's
+   * single connection. Separate pooled queries each get their own connection, so
+   * nothing overlaps.
+   *
+   * WHAT THIS COSTS: `total` and the page are no longer read from one snapshot,
+   * so a concurrent insert can make the count disagree with the rows by one.
+   * `total` is a display number ("60 issues"), and nobody is harmed by it being
+   * momentarily stale. Correctness of the PAGE itself does not depend on it --
+   * `nextCursor` comes from the rows, not from the count.
+   *
+   * NOTE FOR FUTURE EDITS: do not "tidy" these back into a $transaction. The
+   * dashboard and getFormOptions are safe only because their relation-loading
+   * query happens to be LAST in their transaction; that is a fragile, invisible
+   * constraint, so prefer pooled queries whenever relations are involved.
    */
-  const { rows, total } = await db.$transaction(async (tx) => {
-    const rows = await tx.issue.findMany({
+  const [rows, total] = await Promise.all([
+    db.issue.findMany({
       where,
       select: issueListSelect,
       // The id tiebreaker is load-bearing for pagination, not cosmetic: without
@@ -115,18 +136,12 @@ export async function listIssues(
       // and the seam row repeats or vanishes.
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       // Fetch ONE more than we need. If it comes back, there is another page --
-      // which is cheaper and more accurate than comparing against a total that
-      // may have changed since it was counted.
+      // cheaper and more accurate than comparing against a total that may have
+      // changed since it was counted.
       take: take + 1,
-    });
-
-    // `total` counts the whole filtered set, not the page. It is a separate
-    // count() and gets slower on very large tables; if that ever matters,
-    // switch to an approximate count rather than dropping the cursor.
-    const total = await tx.issue.count({ where: base });
-
-    return { rows, total };
-  });
+    }),
+    db.issue.count({ where: base }),
+  ]);
 
   const hasMore = rows.length > take;
   const issues = hasMore ? rows.slice(0, take) : rows;
