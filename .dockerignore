@@ -1,0 +1,37 @@
+# Everything that must not enter the build context.
+#
+# This file is as much a SECURITY control as a size optimisation: anything copied
+# into an image is recoverable from it by anyone who can pull it, and a .env
+# baked into a layer is not removed by deleting it in a later layer.
+
+.env
+.env.*
+!.env.example
+
+node_modules
+.next
+.git
+.github
+
+# Test and tooling output
+coverage
+*.log
+tests
+**/*.test.ts
+**/*.dbtest.ts
+vitest.config.mts
+
+# Local infrastructure -- the image does not run its own database
+docker-compose.yml
+
+# Editor and OS noise
+.vscode
+.idea
+.DS_Store
+
+# Agent instruction files, which have no business in a runtime image
+AGENTS.md
+CLAUDE.md
+.agents
+.claude
+.windsurf

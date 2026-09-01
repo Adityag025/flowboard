@@ -100,6 +100,64 @@ trusting output unreviewed, and the reason the draft fills in a form you review
 rather than creating the issue directly. A larger local model
 (`qwen2.5:7b`, `llama3.1:8b`) or a hosted one follows instructions more closely.
 
+## Deployment
+
+Two supported shapes. Neither has been run against real infrastructure yet — the
+image is built and verified locally, but nothing is deployed.
+
+### Container
+
+```bash
+docker build -t flowboard .
+docker run -p 3000:3000 \
+  -e DATABASE_URL="postgresql://..." \
+  -e AUTH_SECRET="$(openssl rand -base64 32)" \
+  -e NEXT_PUBLIC_APP_URL="https://your-domain" \
+  flowboard
+```
+
+Multi-stage build on `output: "standalone"`, so the runtime image carries no
+build toolchain, no devDependencies and no source — 303 MB, running as a
+non-root user. Verified end to end: the container connects to a real Postgres and
+Redis, serves pages, and Docker's own healthcheck reports `healthy`.
+
+Apply migrations as a **release step, not on boot** — two instances starting
+simultaneously would both try to migrate:
+
+```bash
+docker run --rm -e DATABASE_URL="postgresql://..." flowboard \
+  npx prisma migrate deploy
+```
+
+### Vercel
+
+Managed Postgres and Redis (Neon, Supabase, Upstash) plus the env vars from
+`.env.example`. Add `prisma generate && prisma migrate deploy` as the build
+command, since the Prisma client is gitignored generated code.
+
+### Health checks
+
+`/api/health` distinguishes two things that are routinely conflated:
+
+| | Endpoint | Meaning | On failure |
+| --- | --- | --- | --- |
+| Liveness | `/api/health` | The process is alive | Restart the container |
+| Readiness | `/api/health?check=deep` | It can serve traffic | Remove from rotation, do **not** restart |
+
+Wiring a liveness probe to the deep check restarts every instance at once during
+a brief database blip — turning a recoverable dependency problem into a full
+outage. So the deep check is opt-in, and the container's own `HEALTHCHECK` uses
+the cheap one.
+
+Redis being down reports **200**: rate limiting degrades to the in-memory
+limiter and everything else works, so pulling instances from rotation would be
+wrong. The database being down reports **503**, because there is no page worth
+serving without it. Both verified by stopping the real containers.
+
+The endpoint is unauthenticated — a probe cannot log in — which is why it returns
+component up/down and nothing else. No versions, no connection strings, no error
+detail; those are reconnaissance, and they belong in logs.
+
 ## Tests
 
 ```bash
@@ -329,6 +387,41 @@ looser bound still stops the cases that occur. "No limit at all" was never an
 option. `RateLimitResult.backend` reports which one answered, so a degraded
 limiter is visible rather than silent.
 
+### The node-postgres overlap warning, and why it mattered
+
+For several stages the app emitted:
+
+> `client.query()` when the client is already executing a query is deprecated
+> and will be removed in pg@9.0
+
+I twice wrote this off — first blaming the array form of `$transaction` (wrong,
+changing it didn't help), then calling it upstream because the stack was entirely
+inside `@prisma/adapter-pg` (true, but a stack tells you *where*, not *why*).
+
+Isolating it by experiment gave a precise trigger:
+
+| Pattern | Result |
+| --- | --- |
+| `findMany` **with relations**, followed by another query, in the **same transaction** | **warns** |
+| the same `findMany` with nothing after it in the transaction | clean |
+| the same `findMany` outside a transaction | clean |
+| a scalar-only `findMany` plus another query in a transaction | clean |
+
+Prisma's query interpreter issues several queries to load relations, and a
+following query in the same transaction overlaps them on that transaction's
+single connection. Separate pooled queries each get their own connection.
+
+This was not cosmetic: **pg@9 removes the behaviour**, so it was a thrown error
+waiting for a dependency bump.
+
+The fix was to stop wrapping `listIssues`' page and count in one transaction.
+The cost is that `total` and the rows no longer share a snapshot, so a
+concurrent insert can make the count disagree by one — acceptable, because
+`total` is a display number and `nextCursor` comes from the rows, not the count.
+
+`tests/no-pg-warning.dbtest.ts` fails if this returns, because a comment saying
+"don't wrap these in a transaction" is one refactor away from being ignored.
+
 ### Data model notes
 
 - **`WorkspaceMember` is an explicit join table**, not an implicit many-to-many,
@@ -383,12 +476,9 @@ limiter is visible rather than silent.
   job runner has been added — speculative infrastructure is worse than none.
 - No metrics or tracing. Logs are structured JSON to stdout, which a platform can
   ingest, but there are no counters or spans.
-- Not deployed anywhere yet, and CI has never actually run — the workflow is
-  verified locally, but the first PR is the real test.
-- `next dev` and `next build` emit a node-postgres deprecation warning
-  (`client.query()` while already executing). The stack is entirely inside
-  `@prisma/adapter-pg`, i.e. upstream — it is *not* caused by the array form of
-  `$transaction`, which was the obvious suspect and does not fix it.
+- Not deployed anywhere. The container image is built and verified against real
+  Postgres and Redis locally, but nothing runs in a hosted environment.
+- ~~node-postgres deprecation warning~~ — **fixed.** See below.
 - Summaries are cached but never expire; only a content change regenerates one.
 - There is no UI for creating projects, labels or workspaces — the seed script
   handles those.

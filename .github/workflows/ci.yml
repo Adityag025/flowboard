@@ -24,9 +24,11 @@ jobs:
     name: Typecheck, lint, unit tests, build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # v5, not v4: v4 targets Node 20, which runners have deprecated and now
+      # force onto Node 24 with a warning on every run.
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           # Caches ~/.npm keyed on package-lock.json.
@@ -110,9 +112,9 @@ jobs:
       AUTH_SECRET: ci-integration-only-not-a-real-secret
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
