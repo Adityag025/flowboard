@@ -45,6 +45,11 @@ RUN npx prisma generate
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Opts next.config.ts into `output: "standalone"`, which the runner stage needs.
+# It is off by default because it breaks Vercel's build pipeline -- see the
+# comment in next.config.ts.
+ENV DOCKER_BUILD=1
+
 # Build-time placeholders are set INLINE on this RUN, not with ENV.
 #
 # ENV writes the value into an image layer, where it is recoverable with
