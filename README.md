@@ -100,6 +100,64 @@ trusting output unreviewed, and the reason the draft fills in a form you review
 rather than creating the issue directly. A larger local model
 (`qwen2.5:7b`, `llama3.1:8b`) or a hosted one follows instructions more closely.
 
+## Deployment
+
+Two supported shapes. Neither has been run against real infrastructure yet — the
+image is built and verified locally, but nothing is deployed.
+
+### Container
+
+```bash
+docker build -t flowboard .
+docker run -p 3000:3000 \
+  -e DATABASE_URL="postgresql://..." \
+  -e AUTH_SECRET="$(openssl rand -base64 32)" \
+  -e NEXT_PUBLIC_APP_URL="https://your-domain" \
+  flowboard
+```
+
+Multi-stage build on `output: "standalone"`, so the runtime image carries no
+build toolchain, no devDependencies and no source — 303 MB, running as a
+non-root user. Verified end to end: the container connects to a real Postgres and
+Redis, serves pages, and Docker's own healthcheck reports `healthy`.
+
+Apply migrations as a **release step, not on boot** — two instances starting
+simultaneously would both try to migrate:
+
+```bash
+docker run --rm -e DATABASE_URL="postgresql://..." flowboard \
+  npx prisma migrate deploy
+```
+
+### Vercel
+
+Managed Postgres and Redis (Neon, Supabase, Upstash) plus the env vars from
+`.env.example`. Add `prisma generate && prisma migrate deploy` as the build
+command, since the Prisma client is gitignored generated code.
+
+### Health checks
+
+`/api/health` distinguishes two things that are routinely conflated:
+
+| | Endpoint | Meaning | On failure |
+| --- | --- | --- | --- |
+| Liveness | `/api/health` | The process is alive | Restart the container |
+| Readiness | `/api/health?check=deep` | It can serve traffic | Remove from rotation, do **not** restart |
+
+Wiring a liveness probe to the deep check restarts every instance at once during
+a brief database blip — turning a recoverable dependency problem into a full
+outage. So the deep check is opt-in, and the container's own `HEALTHCHECK` uses
+the cheap one.
+
+Redis being down reports **200**: rate limiting degrades to the in-memory
+limiter and everything else works, so pulling instances from rotation would be
+wrong. The database being down reports **503**, because there is no page worth
+serving without it. Both verified by stopping the real containers.
+
+The endpoint is unauthenticated — a probe cannot log in — which is why it returns
+component up/down and nothing else. No versions, no connection strings, no error
+detail; those are reconnaissance, and they belong in logs.
+
 ## Tests
 
 ```bash
@@ -383,8 +441,8 @@ limiter is visible rather than silent.
   job runner has been added — speculative infrastructure is worse than none.
 - No metrics or tracing. Logs are structured JSON to stdout, which a platform can
   ingest, but there are no counters or spans.
-- Not deployed anywhere yet, and CI has never actually run — the workflow is
-  verified locally, but the first PR is the real test.
+- Not deployed anywhere. The container image is built and verified against real
+  Postgres and Redis locally, but nothing runs in a hosted environment.
 - `next dev` and `next build` emit a node-postgres deprecation warning
   (`client.query()` while already executing). The stack is entirely inside
   `@prisma/adapter-pg`, i.e. upstream — it is *not* caused by the array form of
