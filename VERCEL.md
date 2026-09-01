@@ -33,6 +33,32 @@ Or from the built image:
 docker run --rm -e DATABASE_URL="<production url>" flowboard npx prisma migrate deploy
 ```
 
+## Provisioning the database
+
+`./scripts/finish-db-setup.sh` does the whole sequence — provision, set the env
+var, migrate, redeploy, health check.
+
+It has **one manual prerequisite that cannot be scripted**: accepting the Neon
+marketplace terms once, in a browser.
+
+```
+https://vercel.com/aditya-gupta-s-ehswatch/~/integrations/accept-terms/neon?source=cli
+```
+
+The CLI refuses to continue without it (`integration_terms_acceptance_required`)
+and that is correct — accepting a third-party legal agreement is the account
+owner's decision. Relevant policies:
+
+- [Vercel marketplace addendum](https://vercel.com/legal/integration-marketplace-end-users-addendum)
+- [Neon terms of service](https://neon.tech/terms-of-service)
+- [Neon privacy policy](https://neon.tech/privacy-policy)
+
+The script provisions for **production only**. A preview deployment sharing the
+production database would let a PR branch migrate or truncate real data.
+
+No seeding is needed: signup creates a workspace, project and OWNER membership in
+one transaction.
+
 ## Required environment variables
 
 | Variable | Required | Notes |
