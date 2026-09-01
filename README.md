@@ -3,9 +3,9 @@
 Issue tracking and project management for small teams — a Linear-inspired
 build, developed in stages as a learning project.
 
-> **Status: in progress.** You can sign up, create issues, assign them, set
-> priorities, add labels, comment, and filter the list. The Kanban board with
-> drag-and-drop is next.
+> **Status: in progress.** Sign up, create issues, assign them, set priorities,
+> add labels, comment, filter the list, and drag cards across a Kanban board.
+> The AI layer is next.
 
 ## Stack
 
@@ -106,6 +106,47 @@ Tenant isolation is asserted as a regression test:
 npm run check:isolation
 ```
 
+### UI state vs server state
+
+The board is where this distinction becomes concrete. `issues` arrives as a prop
+and is the truth; `optimisticIssues` is a local guess about what the server is
+about to agree to. Cards move at once instead of waiting for a round trip.
+
+The property that makes it safe is that optimistic state is never permanently
+written. React discards it when the transition ends and re-derives from props —
+so a rejected move reverts with **no rollback code of our own**.
+
+A rejected move also raises a banner. The automatic revert alone is technically
+correct, but the user would watch their card slide back and assume they
+mis-dropped it. A silent revert is how people lose work without noticing.
+
+### `boardOrder` is a float, and floats run out
+
+A drop sets `boardOrder` to the midpoint of its neighbours, so one drag is one
+row update rather than renumbering every row below it.
+
+The part most write-ups omit: repeated drops between the *same* pair halve the
+gap each time — 1000, 500, 250 — and after roughly 50 drops it falls below
+float64 precision, the midpoint equals a neighbour, and the order silently
+becomes ambiguous. So when the gap drops under `MIN_GAP` the column is renumbered
+back to clean multiples: O(column) but rare, versus O(n) on *every* drag if we
+used integers.
+
+### Client Components inherit their imports' dependencies
+
+A Client Component may import **types** from a server module — those are erased
+at compile time. The moment it imports a **value**, it inherits that module's
+entire dependency graph.
+
+Importing one constant from `lib/queries/board.ts` pulled in `db` →
+`@prisma/adapter-pg` → `pg`, and the build tried to bundle a TCP database driver
+for the browser. Shared constants and types therefore live in files that touch
+no database (`lib/board-types.ts`, `lib/issues.ts`).
+
+Note that `next dev` reported this only as a misleading `ENOENT` on a build
+manifest. **The real error appeared only under `npm run build`** — worth
+remembering when a dev-only error makes no sense.
+
 ### Data model notes
 
 - **`WorkspaceMember` is an explicit join table**, not an implicit many-to-many,
@@ -136,7 +177,7 @@ npm run check:isolation
 - [x] **3. Authentication** — Auth.js, sessions, protected routes, logout
 - [x] **4. Database** — PostgreSQL + Prisma, full domain schema, seeded
 - [x] **5. Issue management** — create, assign, prioritise, label, comment, filter
-- [ ] **6. Kanban board** — drag and drop with optimistic updates
+- [x] **6. Kanban board** — drag and drop, optimistic updates, keyboard support
 - [ ] **7. AI layer** — issue summaries, generation, semantic search
 - [ ] **8. Production** — Redis, rate limiting, WebSockets, tests, CI/CD
 
@@ -149,6 +190,10 @@ npm run check:isolation
   at this scale; Stage 8 replaces it with `tsvector` + GIN rather than
   pretending it scales.
 - The issue list caps at 50 rows with no pagination yet.
+- The board loads every issue in a project with no virtualisation; fine for
+  hundreds, not for thousands.
+- Reordering is last-write-wins. Two people dragging the same card at once will
+  not corrupt anything, but the loser gets no notification.
 - There is no UI for creating projects, labels or workspaces — the seed script
   handles those.
 - Issue titles and descriptions cannot be edited after creation yet.
