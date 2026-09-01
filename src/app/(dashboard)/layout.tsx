@@ -33,7 +33,13 @@ export default async function DashboardLayout({
         user={{ name: session.user.name ?? null, email: session.user.email ?? null }}
       />
       <Sidebar />
-      <main className="pt-11 lg:pl-52">
+      {/*
+        This padding MUST match the sidebar's width. The sidebar is `fixed`, so
+        it is out of the layout flow and the main column has to reserve the space
+        itself -- change one without the other and the content either sits under
+        the sidebar or leaves a gap beside it.
+      */}
+      <main className="pt-11 lg:pl-[264px]">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">{children}</div>
       </main>
     </SidebarProvider>
