@@ -11,6 +11,7 @@ import {
 import { checkRateLimit } from "@/lib/ai/rate-limit";
 import { db } from "@/lib/db";
 import { issueKey } from "@/lib/issues";
+import { logger } from "@/lib/logger";
 
 /**
  * WHY THIS IS A ROUTE HANDLER AND NOT A SERVER ACTION.
@@ -28,10 +29,23 @@ import { issueKey } from "@/lib/issues";
  * value -> Server Action; responses that arrive over time -> Route Handler.
  */
 export async function POST(request: Request) {
+  /**
+   * One request id, attached to every line this request emits.
+   *
+   * Without it, a production log is thousands of interleaved lines from
+   * concurrent requests and you cannot tell which rate-limit rejection belongs
+   * to which stream failure. Prefer an id the platform already assigned -- most
+   * proxies set x-request-id, and reusing it means our logs join up with theirs.
+   */
+  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
+  const log = logger.child({ requestId, route: "/api/ai/summarize" });
+  const startedAt = Date.now();
+
   // 1. WHO. A route handler is a public endpoint like any other; the session is
   //    the only thing that establishes identity.
   const session = await auth();
   if (!session?.user?.id) {
+    log.warn("unauthenticated request");
     return Response.json({ error: "Not signed in" }, { status: 401 });
   }
   const userId = session.user.id;
@@ -41,6 +55,9 @@ export async function POST(request: Request) {
   //    queries either.
   const limit = await checkRateLimit(userId);
   if (!limit.allowed) {
+    // Worth logging: a spike here is either an abusive client or a limit set
+    // too low, and you cannot tell which without the data.
+    log.info("rate limited", { userId, backend: limit.backend });
     return Response.json(
       { error: `Too many requests. Try again in ${limit.retryAfterSeconds}s.` },
       { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
@@ -109,6 +126,14 @@ export async function POST(request: Request) {
   // 4. CACHE. The cheapest LLM call is the one we do not make. A cached summary
   //    is returned immediately and costs nothing.
   if (issue.aiSummary && issue.aiSummaryHash === hash) {
+    // Cache hit rate is the single most useful number for this endpoint: it is
+    // the difference between the feature being cheap and being expensive.
+    log.info("summary served from cache", {
+      userId,
+      issueId: issue.id,
+      cached: true,
+      ms: Date.now() - startedAt,
+    });
     return new Response(issue.aiSummary, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
@@ -123,6 +148,9 @@ export async function POST(request: Request) {
     client = getAIClient();
   } catch (error) {
     if (error instanceof AIUnavailableError) {
+      // Not an error level: nothing is broken, the feature is simply not
+      // configured. Logging this at error would page someone for a no-op.
+      log.info("ai not configured");
       // 503, not 500: the server is fine, the feature simply is not set up.
       return Response.json({ error: error.message }, { status: 503 });
     }
@@ -195,6 +223,16 @@ export async function POST(request: Request) {
           });
         }
 
+        log.info("summary generated", {
+          userId,
+          issueId: issue.id,
+          cached: false,
+          chars: text.length,
+          // Latency on the generated path is what you watch; the cached path is
+          // always fast and tells you nothing.
+          ms: Date.now() - startedAt,
+        });
+
         controller.close();
       } catch (error) {
         /**
@@ -204,7 +242,14 @@ export async function POST(request: Request) {
          * rather than closing silently and leaving a truncated paragraph that
          * looks finished.
          */
-        console.error("summarize stream failed:", error);
+        log.error("summarize stream failed", error, {
+          userId,
+          issueId: issue.id,
+          // How much had been streamed before it broke -- distinguishes "failed
+          // immediately" from "died most of the way through".
+          streamedChars: text.length,
+          ms: Date.now() - startedAt,
+        });
         const message =
           error instanceof Anthropic.RateLimitError
             ? "\n\n[Rate limited by the AI provider. Try again shortly.]"

@@ -1,5 +1,7 @@
 import Redis from "ioredis";
 
+import { logger } from "@/lib/logger";
+
 /**
  * Redis client, or null when REDIS_URL is unset.
  *
@@ -52,7 +54,7 @@ export function getRedis(): Redis | null {
   client.on("error", (error) => {
     // ioredis emits this on every retry, so this is intentionally terse -- an
     // unavailable Redis must not drown out the rest of the logs.
-    console.warn("[redis] unavailable:", error.message);
+    logger.warn("redis unavailable", { component: "redis", reason: error.message });
   });
 
   return client;

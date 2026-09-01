@@ -12,6 +12,7 @@ import {
 } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { claimIssueNumber } from "@/lib/issue-numbering";
+import { publishBoardChange } from "@/lib/realtime";
 import {
   commentSchema,
   createIssueSchema,
@@ -211,6 +212,11 @@ export async function updateIssueAction(input: UpdateInput) {
     revalidatePath(`/issues/${issue.project.key}-${issue.number}`);
     revalidatePath("/issues");
     revalidatePath("/dashboard");
+
+    // A status change from the detail page moves a card on the board, so board
+    // viewers need to know too.
+    void publishBoardChange({ projectId: issue.project.id, actorId: userId });
+
     return { ok: true as const };
   } catch (error) {
     if (error instanceof AuthorizationError) {

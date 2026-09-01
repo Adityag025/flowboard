@@ -3,8 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Board } from "@/components/board/board";
+import { RealtimeSync } from "@/components/board/realtime-sync";
 import { requireUser } from "@/lib/authz";
 import { getBoard } from "@/lib/queries/board";
+import { isRealtimeConfigured } from "@/lib/realtime";
 
 type Params = { params: Promise<{ key: string }> };
 
@@ -59,10 +61,17 @@ export default async function ProjectBoardPage({ params }: Params) {
         </div>
       </header>
 
-      <p className="text-xs text-muted">
-        Drag a card to move it, or focus one and press Space, then the arrow
-        keys.
-      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-xs text-muted">
+          Drag a card to move it, or focus one and press Space, then the arrow
+          keys.
+        </p>
+        {/* isRealtimeConfigured() runs on the server; only a boolean crosses. */}
+        <RealtimeSync
+          projectId={board.project.id}
+          enabled={isRealtimeConfigured()}
+        />
+      </div>
 
       {/*
         The Board is a Client Component because dragging is inherently

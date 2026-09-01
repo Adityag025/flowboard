@@ -48,6 +48,8 @@ export function IssueControls({
         // A rejected mutation means the server disagreed with us. Reloading is
         // the honest response: it shows the real state rather than leaving the
         // UI displaying a change that never happened.
+        // console, not our logger: this runs in the BROWSER, and lib/logger
+        // writes to process.stdout. Devtools reads console anyway.
         console.error("Update rejected:", result.error);
         window.location.reload();
       }

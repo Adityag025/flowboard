@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { ActivityType, IssueStatus } from "@/generated/prisma/enums";
 import { AuthorizationError, requireIssueAccess, requireUserId } from "@/lib/authz";
 import { db } from "@/lib/db";
+import { logger } from "@/lib/logger";
+import { publishBoardChange } from "@/lib/realtime";
 import { moveIssueSchema } from "@/lib/validations/board";
 
 /**
@@ -164,14 +166,28 @@ export async function moveIssueAction(input: {
     revalidatePath(`/projects/${issue.project.key}`);
     revalidatePath("/issues");
     revalidatePath("/dashboard");
+
+    /**
+     * Announce AFTER the transaction commits, and deliberately not awaited into
+     * the critical path -- publishBoardChange never throws. Publishing before
+     * the commit would tell other viewers to refetch state that does not exist
+     * yet, and they would read the old board and cache it as current.
+     */
+    void publishBoardChange({ projectId, actorId: userId });
+
     return { ok: true };
   } catch (error) {
     if (error instanceof AuthorizationError) {
       // Deliberately vague: the caller may not know this issue exists.
       return { ok: false, error: "You can no longer edit that issue." };
     }
-    // Unexpected failures surface to the user AND stay in the server logs.
-    console.error("moveIssueAction failed:", error);
+    // Unexpected failures surface to the user AND stay in the server logs, with
+    // enough context to find the row rather than just the stack.
+    logger.error("moveIssueAction failed", error, {
+      action: "moveIssueAction",
+      issueId,
+      toStatus,
+    });
     return { ok: false, error: "Could not save that move. Please try again." };
   }
 }

@@ -11,6 +11,7 @@ import { checkRateLimit } from "@/lib/ai/rate-limit";
 import { requireUserId } from "@/lib/authz";
 import { workspaceIdsFor } from "@/lib/queries/workspaces";
 import { db } from "@/lib/db";
+import { logger } from "@/lib/logger";
 
 /**
  * The shape we ask the model to produce.
@@ -182,11 +183,14 @@ export async function draftIssueAction(input: {
       return { ok: false, error: "The AI provider is rate limiting us. Try again shortly." };
     }
     if (error instanceof Anthropic.AuthenticationError) {
-      console.error("Anthropic auth failed -- check ANTHROPIC_API_KEY");
+      logger.error("anthropic authentication failed", error, {
+        action: "draftIssueAction",
+        hint: "check ANTHROPIC_API_KEY",
+      });
       return { ok: false, error: "AI is misconfigured on this server." };
     }
     if (error instanceof Anthropic.APIError) {
-      console.error("Anthropic API error:", error.status, error.message);
+      logger.error("anthropic api error", error, { action: "draftIssueAction" });
       return { ok: false, error: "The AI service failed. Please try again." };
     }
     throw error;

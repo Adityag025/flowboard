@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { getRedis } from "@/lib/redis";
 
 /**
@@ -155,7 +156,12 @@ async function checkRateLimitInRedis(userId: string): Promise<RateLimitResult | 
   } catch (error) {
     // Any Redis failure degrades to the in-memory limiter rather than 500ing a
     // request the user did nothing wrong to make.
-    console.warn("[ratelimit] redis failed, falling back to memory:", error);
+    // Logged at warn, not error: the request still succeeds on the fallback.
+    // Alerting on this is how you find a Redis outage before users do.
+    logger.warn("rate limiter degraded to in-memory", {
+      component: "ratelimit",
+      reason: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }
