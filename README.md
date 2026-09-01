@@ -4,9 +4,10 @@ Issue tracking and project management for small teams — a Linear-inspired
 build, developed in stages as a learning project.
 
 > **Status: in progress.** Sign up, create issues, assign them, set priorities,
-> add labels, comment, filter, drag cards across a Kanban board, and use Claude
-> to summarize an issue or draft one from free text. Production engineering
-> (Redis, pagination, realtime, tests, CI) is next.
+> add labels, comment, filter, page through the list, drag cards across a Kanban
+> board, and use Claude to summarize an issue or draft one from free text.
+> 115 tests and CI. Remaining: realtime, background jobs, logging/monitoring,
+> and deployment.
 
 > **Note:** the AI features are built and their auth, caching, rate-limiting and
 > degraded paths are verified, but **the live model call is untested** — no API
@@ -24,6 +25,9 @@ build, developed in stages as a learning project.
 | Auth      | Auth.js v5 (credentials, JWT) |
 | Validation| Zod                           |
 | AI        | Claude (`claude-opus-5`)      |
+| Cache     | Redis (rate limiting)         |
+| Testing   | Vitest                        |
+| CI        | GitHub Actions                |
 | Icons     | lucide-react                  |
 
 Dependencies are added only when something needs them. Current runtime deps
@@ -35,7 +39,7 @@ resolution) and `lucide-react` (icons).
 ```bash
 npm install
 cp .env.example .env.local          # then generate your own AUTH_SECRET
-npm run db:up                       # Postgres 16 in Docker on port 5434
+npm run db:up                       # Postgres 16 (5434) + Redis 7 (6380)
 npx prisma migrate dev              # create the schema (also runs the seed)
 npm run dev                         # http://localhost:3100
 ```
@@ -45,6 +49,24 @@ Sign up in the browser, then give yourself sample issues:
 ```bash
 npm run db:seed                     # idempotent; safe to re-run
 ```
+
+## Tests
+
+```bash
+npm test          # 84 unit tests. No database, no network, ~1s.
+npm run test:db   # 31 integration tests against real Postgres + Redis.
+npm run test:all  # everything (115)
+```
+
+The integration tests are deliberately **not mocked**. What is worth testing
+there is exactly what a mock cannot tell you: that a composite unique index
+really rejects a duplicate, that an atomic increment really serialises under
+25-way concurrency, that a membership filter really excludes another tenant, that
+30 concurrent rate-limit checks let through exactly ten. A mocked Prisma or Redis
+would confirm whatever we told it to.
+
+Fixtures are namespaced with a random token and torn down per file, so the suite
+runs against the local dev database without wiping your work.
 
 **After changing `schema.prisma`, restart the dev server.** The Prisma client
 is cached on `globalThis` to survive hot reload (see below), which means a
@@ -201,6 +223,35 @@ but the real mitigation is that these calls have **no tools and no side
 effects** — the worst outcome is a wrong summary, not a deleted issue.
 Capability, not clever prompting, is the defence. Neither is airtight.
 
+### Pagination is keyset, not offset
+
+The issue list is ordered by `updatedAt DESC`, and *any* edit bumps `updatedAt` —
+a comment, a status change, a drag on the board. With `skip`/`take`, a row on
+page 1 that gets edited while you read page 2 shifts everything down, so you see
+a row twice; a row moving the other way is skipped entirely. On a busy tracker
+that is not an edge case. Offset also degrades with depth.
+
+Keyset says "rows after *this* row" instead of "skip 50": stable under
+concurrent edits, and page 200 costs what page 1 costs. The trade is no page
+numbers and no jumping to page 7 — hence "Next" rather than numbered pages.
+
+The cursor carries **both** `updatedAt` and `id`, because `updatedAt` is not
+unique; two issues touched in the same millisecond would make the boundary
+ambiguous and the seam row would repeat or vanish.
+
+### Rate limiting has two backends
+
+Redis is the real one — shared across processes and instances, survives
+restarts, a true sliding window via a sorted set (not `INCR`+`EXPIRE`, which is
+a *fixed* window and allows a double burst at the boundary).
+
+The in-memory limiter is the fallback when `REDIS_URL` is unset or Redis is
+unreachable. It **fails open** into per-process limiting rather than failing
+closed: a Redis blip should not disable a working feature for everyone, and a
+looser bound still stops the cases that occur. "No limit at all" was never an
+option. `RateLimitResult.backend` reports which one answered, so a degraded
+limiter is visible rather than silent.
+
 ### Data model notes
 
 - **`WorkspaceMember` is an explicit join table**, not an implicit many-to-many,
@@ -251,7 +302,14 @@ Capability, not clever prompting, is the defence. Neither is airtight.
   not corrupt anything, but the loser gets no notification.
 - **The live AI model call is unverified** — built and typechecked, but never run
   against the real API. Prompt quality in particular is untuned.
-- AI rate limiting is per-process, not global (see above).
+- No realtime updates: two people on the same board do not see each other's
+  moves without a refresh.
+- No background jobs, structured logging, or monitoring.
+- Not deployed anywhere yet.
+- `next dev` and `next build` emit a node-postgres deprecation warning
+  (`client.query()` while already executing). The stack is entirely inside
+  `@prisma/adapter-pg`, i.e. upstream — it is *not* caused by the array form of
+  `$transaction`, which was the obvious suspect and does not fix it.
 - Summaries are cached but never expire; only a content change regenerates one.
 - There is no UI for creating projects, labels or workspaces — the seed script
   handles those.
