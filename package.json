@@ -11,7 +11,8 @@
     "db:studio": "prisma studio",
     "typecheck": "tsc --noEmit",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "check:isolation": "tsx scripts/authz-check.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
