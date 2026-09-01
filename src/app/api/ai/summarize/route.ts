@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   // 2. RATE LIMIT, before any expensive work. Checked ahead of the database
   //    read on purpose: a user hammering this endpoint should not get free
   //    queries either.
-  const limit = checkRateLimit(userId);
+  const limit = await checkRateLimit(userId);
   if (!limit.allowed) {
     return Response.json(
       { error: `Too many requests. Try again in ${limit.retryAfterSeconds}s.` },

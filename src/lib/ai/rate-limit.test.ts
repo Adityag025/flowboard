@@ -1,8 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { checkRateLimit } from "./rate-limit";
+import { checkRateLimitInMemory as checkRateLimit } from "./rate-limit";
 
 /**
+ * Targets checkRateLimitInMemory, not the async checkRateLimit wrapper.
+ *
+ * The sliding-window algorithm is what these assert, and it is identical in both
+ * backends. Testing the in-memory one keeps the suite synchronous, fast, and
+ * free of a Redis dependency in CI; the Redis path is covered by
+ * tests/rate-limit.dbtest.ts against a real server.
+ *
  * The limiter keys off Date.now(), so time is faked rather than slept through --
  * a real 60-second wait in a unit test is a test nobody runs.
  *

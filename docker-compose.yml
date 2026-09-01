@@ -33,5 +33,23 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    container_name: flowboard-redis
+    restart: unless-stopped
+    ports:
+      # 6380 because 6379 on this machine belongs to another project. Sharing a
+      # Redis means sharing a keyspace, and one FLUSHALL takes out both.
+      - "6380:6379"
+    # No persistence configured: everything we keep in Redis is derived and
+    # short-lived (rate-limit counters). Losing it on restart costs nothing but a
+    # briefly generous rate limit -- so an AOF/RDB volume would be pure overhead.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
 volumes:
   flowboard_pgdata:

@@ -64,7 +64,7 @@ export async function draftIssueAction(input: {
     return { ok: false, error: "Your session expired. Please sign in again." };
   }
 
-  const limit = checkRateLimit(userId);
+  const limit = await checkRateLimit(userId);
   if (!limit.allowed) {
     return {
       ok: false,

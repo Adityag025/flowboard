@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to the same branch cancels the previous run. Without this, pushing
+# three times in a minute queues three full runs and you wait for stale ones.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned to the Node major used in development. "latest" turns an upstream
+  # release into a surprise CI failure on an unrelated PR.
+  NODE_VERSION: "24"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Fast feedback: no services, no database. Runs in well under a minute.
+  # ---------------------------------------------------------------------------
+  quality:
+    name: Typecheck, lint, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          # Caches ~/.npm keyed on package-lock.json.
+          cache: npm
+
+      # npm ci, not npm install: it installs exactly the lockfile and fails if
+      # package.json and the lock have drifted. In CI a silently updated
+      # dependency is a build that does not match anyone's machine.
+      - run: npm ci
+
+      # The Prisma client is generated code and gitignored, so nothing that
+      # imports it will typecheck until this runs.
+      - run: npx prisma generate
+
+      # `npm run typecheck` runs `next typegen` first, because the root layout
+      # uses LayoutProps<"/"> -- a type Next GENERATES into .next/types, which
+      # does not exist on a fresh checkout. Without it CI fails with
+      # "Cannot find name 'LayoutProps'" before ever reaching the build. Found
+      # by running this job locally against a cleaned .next.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          # The build imports modules that read these. No real values are needed
+          # -- every route that touches the database is dynamic, so nothing
+          # connects at build time -- but they must be present and non-empty.
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+          AUTH_SECRET: ci-build-only-not-a-real-secret
+          NEXT_PUBLIC_APP_URL: http://localhost:3100
+
+  # ---------------------------------------------------------------------------
+  # The tests that need real infrastructure. Split into its own job so a broken
+  # type does not wait on Postgres booting, and so a failure tells you WHICH
+  # class of problem you have.
+  # ---------------------------------------------------------------------------
+  integration:
+    name: Integration tests (Postgres + Redis)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: flowboard
+          POSTGRES_PASSWORD: flowboard_ci
+          POSTGRES_DB: flowboard
+        ports:
+          - 5432:5432
+        # Without a health check the steps start before Postgres finishes
+        # initialising, and the first migration fails intermittently -- the
+        # classic flaky CI database.
+        options: >-
+          --health-cmd "pg_isready -U flowboard -d flowboard"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # CI uses the default ports; only local development needs the odd ones,
+      # because this machine already has other projects on 5432 and 6379.
+      DATABASE_URL: postgresql://flowboard:flowboard_ci@localhost:5432/flowboard?schema=public
+      REDIS_URL: redis://localhost:6379
+      AUTH_SECRET: ci-integration-only-not-a-real-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx prisma generate
+
+      # `migrate deploy`, never `migrate dev`. deploy applies committed
+      # migrations and nothing else; dev would try to generate new ones from
+      # schema drift and can reset the database.
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Integration tests
+        run: npx vitest run tests/
+
+      # A migration that cannot be applied to an empty database is broken even
+      # if every test passed against a schema pushed some other way. This
+      # catches a committed migration with a syntax error or a bad dependency.
+      - name: Verify migrations are consistent with the schema
+        run: npx prisma migrate status
