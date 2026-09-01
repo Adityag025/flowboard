@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { NewIssuePanel } from "@/components/issues/new-issue-panel";
-import { isAIConfigured } from "@/lib/ai/client";
+import { isAIConfigured } from "@/lib/ai/provider";
 import { Card } from "@/components/ui/card";
 import { requireUser } from "@/lib/authz";
 import { getFormOptions } from "@/lib/queries/issues";

@@ -1,17 +1,19 @@
 "use server";
 
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
 import { IssuePriority } from "@/generated/prisma/enums";
-import { AIUnavailableError, AI_MODEL, getAIClient } from "@/lib/ai/client";
+import {
+  AIUnavailableError,
+  getAiProvider,
+  type AiProvider,
+} from "@/lib/ai/provider";
 import { DRAFT_SYSTEM, buildDraftUserMessage } from "@/lib/ai/prompts";
+import { resolveLabelIds } from "@/lib/ai/resolve-labels";
 import { checkRateLimit } from "@/lib/ai/rate-limit";
 import { requireUserId } from "@/lib/authz";
 import { workspaceIdsFor } from "@/lib/queries/workspaces";
 import { db } from "@/lib/db";
-import { logger } from "@/lib/logger";
 
 /**
  * The shape we ask the model to produce.
@@ -96,9 +98,9 @@ export async function draftIssueAction(input: {
     orderBy: { name: "asc" },
   });
 
-  let client: Anthropic;
+  let provider: AiProvider;
   try {
-    client = getAIClient();
+    provider = getAiProvider();
   } catch (error) {
     if (error instanceof AIUnavailableError) {
       return { ok: false, error: error.message };
@@ -106,39 +108,37 @@ export async function draftIssueAction(input: {
     throw error;
   }
 
-  try {
-    const response = await client.messages.parse({
-      model: AI_MODEL,
-      max_tokens: 16000,
-      thinking: { type: "adaptive" },
-      output_config: {
-        effort: "low",
-        format: zodOutputFormat(draftSchema),
+  {
+    /**
+     * Provider-agnostic. The adapter decides HOW the object is constrained --
+     * Anthropic's structured outputs, OpenAI's json_schema, or a json_object
+     * fallback for endpoints supporting neither. The Zod schema below is
+     * enforced on our side either way, so weaker provider support degrades to a
+     * retry rather than to bad data.
+     */
+    const result = await provider.generateJson(
+      {
+        system: DRAFT_SYSTEM,
+        user: buildDraftUserMessage(
+          description,
+          labels.map((label) => label.name),
+        ),
       },
-      system: DRAFT_SYSTEM,
-      messages: [
-        {
-          role: "user",
-          content: buildDraftUserMessage(
-            description,
-            labels.map((label) => label.name),
-          ),
-        },
-      ],
-    });
+      draftSchema,
+      "issue_draft",
+    );
 
-    // A refusal is HTTP 200 with stop_reason "refusal" -- not a thrown error.
-    if (response.stop_reason === "refusal") {
-      return {
-        ok: false,
-        error: "The model declined this request. Try rewording your description.",
-      };
+    if (!result.ok) {
+      if (result.kind === "refusal") {
+        return {
+          ok: false,
+          error: "The model declined this request. Try rewording your description.",
+        };
+      }
+      return { ok: false, error: result.error };
     }
 
-    const parsed = response.parsed_output;
-    if (!parsed) {
-      return { ok: false, error: "The model returned something unusable. Try again." };
-    }
+    const parsed = result.data;
 
     /**
      * TREAT MODEL OUTPUT LIKE USER INPUT.
@@ -155,17 +155,7 @@ export async function draftIssueAction(input: {
      * The model is an untrusted source that happens to be helpful. It never
      * gets to decide what rows exist.
      */
-    const byName = new Map(
-      labels.map((label) => [label.name.toLowerCase(), label.id]),
-    );
-
-    const labelIds = [
-      ...new Set(
-        parsed.labelNames
-          .map((name) => byName.get(name.trim().toLowerCase()))
-          .filter((id): id is string => Boolean(id)),
-      ),
-    ];
+    const labelIds = resolveLabelIds(parsed.labelNames, labels);
 
     return {
       ok: true,
@@ -176,23 +166,8 @@ export async function draftIssueAction(input: {
         labelIds,
       },
     };
-  } catch (error) {
-    // A typed chain, not one broad catch: these need different messages, and
-    // conflating them hides which failures are retryable.
-    if (error instanceof Anthropic.RateLimitError) {
-      return { ok: false, error: "The AI provider is rate limiting us. Try again shortly." };
-    }
-    if (error instanceof Anthropic.AuthenticationError) {
-      logger.error("anthropic authentication failed", error, {
-        action: "draftIssueAction",
-        hint: "check ANTHROPIC_API_KEY",
-      });
-      return { ok: false, error: "AI is misconfigured on this server." };
-    }
-    if (error instanceof Anthropic.APIError) {
-      logger.error("anthropic api error", error, { action: "draftIssueAction" });
-      return { ok: false, error: "The AI service failed. Please try again." };
-    }
-    throw error;
   }
+  // Provider-specific error handling (rate limits, auth, transport) now lives
+  // inside each adapter, which is the only place that knows what its errors look
+  // like. This function receives a discriminated result and maps it to UI copy.
 }

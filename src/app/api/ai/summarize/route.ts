@@ -1,7 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk";
-
 import { auth } from "@/lib/auth";
-import { AIUnavailableError, AI_MODEL, getAIClient } from "@/lib/ai/client";
+import {
+  AIUnavailableError,
+  getAiProvider,
+  type AiProvider,
+} from "@/lib/ai/provider";
 import {
   SUMMARIZE_SYSTEM,
   buildSummarizeUserMessage,
@@ -143,9 +145,9 @@ export async function POST(request: Request) {
     });
   }
 
-  let client: Anthropic;
+  let provider: AiProvider;
   try {
-    client = getAIClient();
+    provider = getAiProvider();
   } catch (error) {
     if (error instanceof AIUnavailableError) {
       // Not an error level: nothing is broken, the feature is simply not
@@ -163,50 +165,21 @@ export async function POST(request: Request) {
     async start(controller) {
       let text = "";
       try {
-        const aiStream = client.beta.messages.stream({
-          model: AI_MODEL,
-          max_tokens: 64000,
-          // Adaptive thinking: the model decides how much reasoning a given
-          // issue warrants. `display: "omitted"` is the default on this model,
-          // so no reasoning is streamed to the browser -- we only want prose.
-          thinking: { type: "adaptive" },
-          // A summary is a modest task; low effort is cheaper and enough. Raise
-          // it if summaries come back shallow.
-          output_config: { effort: "low" },
-          // Safety classifiers can decline a request. Without a fallback the
-          // call simply stops; with one, the same request is retried on another
-          // model inside the same call.
-          betas: ["server-side-fallback-2026-06-01"],
-          fallbacks: [{ model: "claude-opus-4-8" }],
+        /**
+         * Provider-agnostic. Whether this is Anthropic, OpenAI, Groq or a local
+         * Ollama is decided by configuration -- the handler only knows it gets
+         * text chunks. Provider-specific behaviour (adaptive thinking, refusal
+         * fallbacks, json_schema support) lives in the adapters.
+         */
+        for await (const chunk of provider.streamText({
           system: SUMMARIZE_SYSTEM,
-          messages: [
-            { role: "user", content: buildSummarizeUserMessage(forSummary) },
-          ],
-        });
-
-        for await (const event of aiStream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            text += event.delta.text;
-            controller.enqueue(encoder.encode(event.delta.text));
-          }
-        }
-
-        const final = await aiStream.finalMessage();
-
-        // A refusal arrives as HTTP 200 with stop_reason "refusal", not as a
-        // thrown error -- so it must be checked explicitly or it looks like a
-        // successful empty response.
-        if (final.stop_reason === "refusal") {
-          controller.enqueue(
-            encoder.encode(
-              "\n\n[The model declined to summarize this issue.]",
-            ),
-          );
-          controller.close();
-          return;
+          user: buildSummarizeUserMessage(forSummary),
+          // Propagated so an abandoned stream actually stops generating -- an
+          // orphaned generation still bills.
+          signal: request.signal,
+        })) {
+          text += chunk;
+          controller.enqueue(encoder.encode(chunk));
         }
 
         // 5. PERSIST, only after a clean finish. Caching a half-streamed
@@ -227,6 +200,8 @@ export async function POST(request: Request) {
           userId,
           issueId: issue.id,
           cached: false,
+          provider: provider.id,
+          model: provider.model,
           chars: text.length,
           // Latency on the generated path is what you watch; the cached path is
           // always fast and tells you nothing.
@@ -250,10 +225,7 @@ export async function POST(request: Request) {
           streamedChars: text.length,
           ms: Date.now() - startedAt,
         });
-        const message =
-          error instanceof Anthropic.RateLimitError
-            ? "\n\n[Rate limited by the AI provider. Try again shortly.]"
-            : "\n\n[The summary was interrupted. Please try again.]";
+        const message = "\n\n[The summary was interrupted. Please try again.]";
         controller.enqueue(encoder.encode(message));
         controller.close();
       }

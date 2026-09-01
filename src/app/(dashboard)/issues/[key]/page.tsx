@@ -9,7 +9,7 @@ import { LabelPicker } from "@/components/issues/label-picker";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { describeActivity, relativeTime } from "@/lib/activity";
-import { isAIConfigured } from "@/lib/ai/client";
+import { isAIConfigured } from "@/lib/ai/provider";
 import { requireUser } from "@/lib/authz";
 import {
   issueKey,
