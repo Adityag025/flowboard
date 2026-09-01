@@ -5,10 +5,30 @@ import { AuthError } from "next-auth";
 import { Prisma } from "@/generated/prisma/client";
 
 import { signIn, signOut } from "@/lib/auth";
+import { toUserMessage } from "@/lib/errors";
 import { db } from "@/lib/db";
 import { signInSchema, signUpSchema } from "@/lib/validations/auth";
 import { slugify, slugSuffix } from "@/lib/workspaces";
 import { WorkspaceRole } from "@/generated/prisma/enums";
+
+/**
+ * Next signals a redirect by THROWING, and `redirect()` inside signIn() is how a
+ * successful sign-in navigates. So any catch-all in an action must let that
+ * through, or success looks like failure and the user sits on the login form
+ * while already authenticated.
+ *
+ * Checked via the digest string rather than importing Next's internal
+ * isRedirectError, whose module path is not part of the public API.
+ */
+function isRedirectSignal(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    typeof (error as { digest: unknown }).digest === "string" &&
+    (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+  );
+}
 
 /**
  * What a form gets back. `fieldErrors` drives per-input messages; `formError`
@@ -124,7 +144,21 @@ export async function signUpAction(
         }
         return { formError: "Could not create your workspace. Please try again." };
       }
-      throw error;
+
+      if (isRedirectSignal(error)) {
+        throw error;
+      }
+
+      /**
+       * Anything else -- most importantly an unreachable database -- becomes a
+       * message rather than a rethrow.
+       *
+       * This previously rethrew, so a Server Action returned a 500 and the
+       * browser showed a minified React error with no usable text. Reported from
+       * production, where signup 500'd because no database was configured; it
+       * would behave identically during any database outage.
+       */
+      return { formError: toUserMessage(error, { action: "signUpAction" }) };
     }
   }
 
@@ -153,18 +187,42 @@ export async function signInAction(
   } catch (error) {
     /**
      * THE IMPORTANT BIT: on success, signIn does not return -- it throws a
-     * special redirect error that Next intercepts to navigate the browser.
-     *
-     * So a bare `catch` here would swallow the success case and the user would
-     * appear to be stuck on the login form despite being signed in. Only
-     * AuthError means genuine failure; everything else must be re-thrown.
+     * redirect that Next intercepts to navigate the browser. Swallowing it
+     * would leave the user on the login form while already signed in, so it is
+     * re-thrown FIRST, before any other classification.
      */
-    if (error instanceof AuthError) {
-      // One message for every failure mode. Distinguishing "no such user" from
-      // "wrong password" would let anyone enumerate registered emails.
-      return { formError: "Invalid email or password" };
+    if (isRedirectSignal(error)) {
+      throw error;
     }
-    throw error;
+
+    if (error instanceof AuthError) {
+      /**
+       * NOT every AuthError is a bad credential.
+       *
+       * When authorize() throws -- a database outage, a misconfigured secret --
+       * Auth.js wraps it in CallbackRouteError, which is also an AuthError. This
+       * branch used to answer "Invalid email or password" for all of them, so an
+       * outage told users their password was wrong and they retyped a correct
+       * one until they concluded they had forgotten it.
+       *
+       * Only CredentialsSignin means the credentials themselves were rejected.
+       */
+      if (error.type === "CredentialsSignin") {
+        // One message for both "no such user" and "wrong password".
+        // Distinguishing them would let anyone enumerate registered emails.
+        return { formError: "Invalid email or password" };
+      }
+
+      return {
+        formError: toUserMessage(error.cause?.err ?? error, {
+          action: "signInAction",
+          authErrorType: error.type,
+        }),
+      };
+    }
+
+    // Neither a redirect nor an AuthError -- still must not become a 500.
+    return { formError: toUserMessage(error, { action: "signInAction" }) };
   }
 
   return null;
