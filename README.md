@@ -9,9 +9,9 @@ build, developed in stages as a learning project.
 > 115 tests and CI. Remaining: realtime, background jobs, logging/monitoring,
 > and deployment.
 
-> **Note:** the AI features are built and their auth, caching, rate-limiting and
-> degraded paths are verified, but **the live model call is untested** — no API
-> key was available in the environment where they were written.
+> **Note:** the AI features work with any provider. The OpenAI-compatible
+> adapter is verified end to end against a local server, but **the Anthropic
+> path has never made a live call** — no key was available where it was written.
 
 ## Stack
 
@@ -24,8 +24,10 @@ build, developed in stages as a learning project.
 | Database  | PostgreSQL 16 + Prisma 7      |
 | Auth      | Auth.js v5 (credentials, JWT) |
 | Validation| Zod                           |
-| AI        | Claude (`claude-opus-5`)      |
+| AI        | Any provider (see below)      |
 | Cache     | Redis (rate limiting)         |
+| Realtime  | SSE + Redis pub/sub           |
+| Logging   | JSON to stdout                |
 | Testing   | Vitest                        |
 | CI        | GitHub Actions                |
 | Icons     | lucide-react                  |
@@ -53,9 +55,9 @@ npm run db:seed                     # idempotent; safe to re-run
 ## Tests
 
 ```bash
-npm test          # 84 unit tests. No database, no network, ~1s.
+npm test          # 143 unit tests. No database, no network, ~2s.
 npm run test:db   # 31 integration tests against real Postgres + Redis.
-npm run test:all  # everything (115)
+npm run test:all  # everything (174)
 ```
 
 The integration tests are deliberately **not mocked**. What is worth testing
@@ -174,6 +176,33 @@ no database (`lib/board-types.ts`, `lib/issues.ts`).
 Note that `next dev` reported this only as a misleading `ENOENT` on a build
 manifest. **The real error appeared only under `npm run build`** — worth
 remembering when a dev-only error makes no sense.
+
+### AI: bring your own provider
+
+Two adapters cover essentially every provider:
+
+| Adapter | Covers | Configure with |
+| --- | --- | --- |
+| `anthropic` | Anthropic's API, via the official SDK — adaptive thinking, effort control, server-side refusal fallbacks | `ANTHROPIC_API_KEY` |
+| `openai` | Anything speaking `/chat/completions`: OpenAI, Groq, Together, OpenRouter, Mistral, DeepSeek, Fireworks, vLLM, LM Studio, Ollama | `AI_PROVIDER=openai`, `AI_API_KEY`, `AI_MODEL`, `AI_BASE_URL` |
+
+A bare `ANTHROPIC_API_KEY` still works with no other configuration. See
+`.env.example` for copy-paste configs including a free local Ollama.
+
+This is **not** a lowest-common-denominator abstraction — the interface is a
+narrow waist, not a cap. The Anthropic adapter keeps its provider-specific
+features; the OpenAI adapter still uses `json_schema` where the endpoint supports
+it, falling back to `json_object` where it doesn't (Ollama and older gateways
+`400` on the former).
+
+Either way **our Zod validation is the guarantee**. Provider-side structured
+output is an optimisation that makes valid output likelier, not a contract. And a
+schema guarantees *shape*, not *content*: `resolveLabelIds` drops a label the
+model invented rather than creating it. The model never decides what rows exist.
+
+The `openai` adapter is raw `fetch` rather than the `openai` package — the
+surface used is two endpoints and an SSE parser, and raw fetch makes it testable
+against a local server with no credentials, which is how all 16 of its tests run.
 
 ### AI: which surface, and why
 
@@ -302,10 +331,12 @@ limiter is visible rather than silent.
   not corrupt anything, but the loser gets no notification.
 - **The live AI model call is unverified** — built and typechecked, but never run
   against the real API. Prompt quality in particular is untuned.
-- No realtime updates: two people on the same board do not see each other's
-  moves without a refresh.
-- No background jobs, structured logging, or monitoring.
-- Not deployed anywhere yet.
+- No background jobs. Nothing in the app currently needs deferred work, so no
+  job runner has been added — speculative infrastructure is worse than none.
+- No metrics or tracing. Logs are structured JSON to stdout, which a platform can
+  ingest, but there are no counters or spans.
+- Not deployed anywhere yet, and CI has never actually run — the workflow is
+  verified locally, but the first PR is the real test.
 - `next dev` and `next build` emit a node-postgres deprecation warning
   (`client.query()` while already executing). The stack is entirely inside
   `@prisma/adapter-pg`, i.e. upstream — it is *not* caused by the array form of
