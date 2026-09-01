@@ -11,6 +11,7 @@ import {
   requireUserId,
 } from "@/lib/authz";
 import { db } from "@/lib/db";
+import { claimIssueNumber } from "@/lib/issue-numbering";
 import {
   commentSchema,
   createIssueSchema,
@@ -70,18 +71,8 @@ export async function createIssueAction(
     const project = await requireProjectAccess(input.projectId, userId);
 
     const issue = await db.$transaction(async (tx) => {
-      /**
-       * Claim the next issue number ATOMICALLY.
-       *
-       * `increment` compiles to `SET "issueCounter" = "issueCounter" + 1`, which
-       * Postgres serialises per row. Two concurrent creates therefore get 124
-       * and 125 rather than both reading 123 and both trying to be 124.
-       */
-      const counted = await tx.project.update({
-        where: { id: project.id },
-        data: { issueCounter: { increment: 1 } },
-        select: { issueCounter: true },
-      });
+      // Atomic; see the reasoning in lib/issue-numbering.ts.
+      const number = await claimIssueNumber(tx, project.id);
 
       // Place new cards at the end of their column, leaving the usual gap.
       const last = await tx.issue.findFirst({
@@ -92,7 +83,7 @@ export async function createIssueAction(
 
       const created = await tx.issue.create({
         data: {
-          number: counted.issueCounter,
+          number,
           title: input.title,
           description: input.description ?? null,
           status: input.status,
