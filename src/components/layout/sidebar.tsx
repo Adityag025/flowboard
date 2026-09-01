@@ -35,7 +35,7 @@ export function Sidebar() {
         onClick={close}
         aria-hidden="true"
         className={cn(
-          "fixed inset-0 top-14 z-30 bg-black/40 transition-opacity lg:hidden",
+          "fixed inset-0 top-14 z-30 bg-black/40 transition-opacity duration-[var(--dur-drawer)] ease-[var(--ease-out-strong)] lg:hidden",
           isOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       />
@@ -43,7 +43,10 @@ export function Sidebar() {
       <aside
         aria-label="Workspace navigation"
         className={cn(
-          "fixed bottom-0 left-0 top-14 z-40 flex w-60 flex-col border-r border-border bg-surface transition-transform duration-200 ease-out",
+          // The drawer curve, not the default ease-out: a panel sliding the full width
+          // of the screen wants a curve that decelerates late, or it looks like it
+          // stops short.
+          "fixed bottom-0 left-0 top-14 z-40 flex w-60 flex-col border-r border-border bg-surface transition-transform duration-[var(--dur-drawer)] ease-[var(--ease-drawer)]",
           // On desktop the sidebar is always visible; the transform is neutralised.
           "lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full",

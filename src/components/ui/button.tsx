@@ -16,7 +16,22 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex h-9 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition-opacity disabled:cursor-not-allowed",
+        "inline-flex h-9 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium disabled:cursor-not-allowed",
+
+        /**
+         * PRESS FEEDBACK, via the `.press` class in globals.css.
+         *
+         * A button with no :active state does not feel like it heard you -- the
+         * click registers, but nothing confirms it, and on a slow action the
+         * user clicks again.
+         *
+         * Not `active:scale-[0.97]`: that Tailwind utility put the class on the
+         * element and generated no CSS rule for it, so the effect was silently
+         * inert. `.press` is plain CSS with named transition properties -- never
+         * `transition: all`, which would animate layout properties too.
+         */
+        "press",
+
         variants[variant],
         className,
       )}

@@ -44,6 +44,62 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Motion tokens.
+
+   NAMED *-strong DELIBERATELY. Tailwind v4 ships its own --ease-out and
+   --ease-in-out theme tokens, so defining mine under the same names produced two
+   competing definitions in the compiled stylesheet -- which one won depended on
+   source order, and every `ease-out` utility in the app silently inherited my
+   curve instead of Tailwind's. Surprising action at a distance. Distinct names
+   mean a utility does what its name says and these are opt-in.
+
+   The built-in CSS easings are too weak -- `ease-out` is cubic-bezier(0, 0, .2, 1),
+   which lacks the initial punch that makes an animation feel intentional. These
+   are stronger variants.
+
+   NEVER ease-in for UI. It starts slow, which delays movement at exactly the
+   moment the user is watching most closely, so a 300ms ease-in *feels* slower
+   than a 300ms ease-out.
+--------------------------------------------------------------------------- */
+:root {
+  /* Entering / exiting: starts fast, feels responsive. */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  /* Moving or morphing on screen: natural acceleration and deceleration. */
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  /* iOS-like drawer curve. */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Durations, kept under 300ms for anything the user triggers. */
+  --dur-press: 140ms;
+  --dur-tooltip: 150ms;
+  --dur-menu: 200ms;
+  --dur-drawer: 260ms;
+  --dur-reveal: 420ms; /* Charts only: seen rarely, not user-triggered. */
+}
+
+/**
+ * Reduced motion means FEWER and GENTLER animations, not none.
+ *
+ * Opacity and colour transitions aid comprehension and stay. Movement --
+ * transforms, clip-path reveals, staggered entrances -- is what causes motion
+ * sickness, so that goes.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    /* Transitions are narrowed rather than killed: colour and opacity survive
+       because they explain state, and removing them would make the UI feel
+       broken rather than calm. */
+    transition-property: opacity, background-color, border-color, color, fill, stroke !important;
+    transition-duration: 120ms !important;
+  }
+}
+
 @theme inline {
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);
@@ -59,6 +115,74 @@
      overrode it with Arial in the body rule -- this actually uses it. */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+/**
+ * HOVER GATING.
+ *
+ * A touch device fires :hover on tap and leaves it applied after the finger
+ * lifts, so a row stays highlighted as though the pointer were still on it.
+ * `@media (hover: hover) and (pointer: fine)` restricts hover styling to devices
+ * that actually have a hovering pointer.
+ *
+ * Applied as a global override rather than by editing every call site: Tailwind's
+ * `hover:` variant compiles to a bare :hover, and there are a dozen of them
+ * across rows, cards and nav links. Neutralising the *background* and *colour*
+ * hover effects on touch is the whole fix -- the styles still exist for mice.
+ */
+@media (hover: none), (pointer: coarse) {
+  a:hover,
+  button:hover,
+  li:hover,
+  summary:hover,
+  [role="menuitem"]:hover {
+    /* Reset to the element's own resting values; touch feedback comes from
+       :active instead, which is correct on touch. */
+    background-color: revert-layer;
+    color: revert-layer;
+  }
+}
+
+/**
+ * PRESS FEEDBACK.
+ *
+ * Written as real CSS rather than a Tailwind `active:scale-[0.97]` utility,
+ * because that utility silently generated no rule at all -- the class landed on
+ * the element and Tailwind emitted nothing for it, so the whole effect was
+ * inert. Verified by walking document.styleSheets rather than trusting the
+ * markup.
+ *
+ * scale(0.97) is deliberately subtle: enough to feel, not enough to notice.
+ * Below 0.95 it reads as the button shrinking rather than responding.
+ *
+ * `scale` rather than `transform`, so it composes with any transform the element
+ * already carries instead of overwriting it.
+ */
+.press {
+  transition:
+    scale var(--dur-press) var(--ease-out-strong),
+    opacity var(--dur-press) var(--ease-out-strong),
+    background-color var(--dur-press) var(--ease-out-strong),
+    border-color var(--dur-press) var(--ease-out-strong);
+}
+.press:active:not(:disabled) {
+  scale: 0.97;
+}
+/* A disabled control must not pretend to respond. */
+.press:disabled {
+  scale: 1;
+}
+
+/**
+ * Press feedback for touch, where there is no hover to rely on.
+ */
+@media (hover: none) {
+  a:active,
+  button:active,
+  [role="menuitem"]:active {
+    opacity: 0.7;
+    transition: opacity 80ms var(--ease-out-strong);
+  }
 }
 
 body {
