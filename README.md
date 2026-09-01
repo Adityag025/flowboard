@@ -4,8 +4,13 @@ Issue tracking and project management for small teams — a Linear-inspired
 build, developed in stages as a learning project.
 
 > **Status: in progress.** Sign up, create issues, assign them, set priorities,
-> add labels, comment, filter the list, and drag cards across a Kanban board.
-> The AI layer is next.
+> add labels, comment, filter, drag cards across a Kanban board, and use Claude
+> to summarize an issue or draft one from free text. Production engineering
+> (Redis, pagination, realtime, tests, CI) is next.
+
+> **Note:** the AI features are built and their auth, caching, rate-limiting and
+> degraded paths are verified, but **the live model call is untested** — no API
+> key was available in the environment where they were written.
 
 ## Stack
 
@@ -18,6 +23,7 @@ build, developed in stages as a learning project.
 | Database  | PostgreSQL 16 + Prisma 7      |
 | Auth      | Auth.js v5 (credentials, JWT) |
 | Validation| Zod                           |
+| AI        | Claude (`claude-opus-5`)      |
 | Icons     | lucide-react                  |
 
 Dependencies are added only when something needs them. Current runtime deps
@@ -147,6 +153,54 @@ Note that `next dev` reported this only as a misleading `ENOENT` on a build
 manifest. **The real error appeared only under `npm run build`** — worth
 remembering when a dev-only error makes no sense.
 
+### AI: which surface, and why
+
+Everything else in this app is a Server Action. Summarize deliberately is not.
+
+| Feature | Surface | Why |
+| --- | --- | --- |
+| Summarize an issue | **Route Handler**, streamed | Takes seconds. As an action the user stares at a spinner then gets a whole paragraph; streamed, the first words arrive in ~300ms. That *is* the feature. |
+| Draft an issue from text | **Server Action**, structured | The form needs the whole object before it can populate anything. Half a title is useless, so there is nothing to stream — and we keep end-to-end type safety. |
+
+The rule is not "Server Actions are better": *mutations that return a value →
+Server Action; responses that arrive over time → Route Handler.*
+
+### AI: cost control shipped with the feature
+
+An LLM call is the first operation in this app that costs real money per
+request, so rate limiting and caching are not Stage 8 polish here — an
+unprotected endpoint is a button anyone can hold down to spend the owner's
+budget.
+
+**The cache is keyed on a hash of the summary inputs, not `updatedAt`.** That is
+what makes it correct rather than merely fast: dragging a card changes
+`updatedAt` but cannot change what the issue says, while a new comment must
+invalidate. Verified all three ways.
+
+**Rate limiting is in-memory, so it is per-process.** It resets on restart, and
+two instances mean two budgets. It still stops the real cases — impatient
+clicking, a looping client, one runaway account — and Stage 8 swaps the `Map`
+for Redis in one file.
+
+**There is no prompt caching**, despite the instinct to add it. The minimum
+cacheable prefix is 1024–4096 tokens and these system prompts are a few hundred,
+so a `cache_control` breakpoint would be silently ignored. The result cache in
+Postgres is what saves money at this size.
+
+### AI: model output is untrusted input
+
+The Zod schema guarantees the **shape**, not the **content**. Titles are
+truncated to the column width, and label names are resolved against the labels
+actually fetched for that user — anything unmatched is dropped, never created.
+The model is an untrusted source that happens to be helpful; it never decides
+what rows exist.
+
+On prompt injection: issue text is user-supplied, so anyone can write "ignore
+your instructions" in a description. The content is fenced and labelled as data,
+but the real mitigation is that these calls have **no tools and no side
+effects** — the worst outcome is a wrong summary, not a deleted issue.
+Capability, not clever prompting, is the defence. Neither is airtight.
+
 ### Data model notes
 
 - **`WorkspaceMember` is an explicit join table**, not an implicit many-to-many,
@@ -178,7 +232,8 @@ remembering when a dev-only error makes no sense.
 - [x] **4. Database** — PostgreSQL + Prisma, full domain schema, seeded
 - [x] **5. Issue management** — create, assign, prioritise, label, comment, filter
 - [x] **6. Kanban board** — drag and drop, optimistic updates, keyboard support
-- [ ] **7. AI layer** — issue summaries, generation, semantic search
+- [x] **7. AI layer** — streaming summaries, structured issue drafting
+- [ ] **7b. AI, later** — project summaries, classification, semantic search
 - [ ] **8. Production** — Redis, rate limiting, WebSockets, tests, CI/CD
 
 ## Known issues
@@ -194,6 +249,10 @@ remembering when a dev-only error makes no sense.
   hundreds, not for thousands.
 - Reordering is last-write-wins. Two people dragging the same card at once will
   not corrupt anything, but the loser gets no notification.
+- **The live AI model call is unverified** — built and typechecked, but never run
+  against the real API. Prompt quality in particular is untuned.
+- AI rate limiting is per-process, not global (see above).
+- Summaries are cached but never expire; only a content change regenerates one.
 - There is no UI for creating projects, labels or workspaces — the seed script
   handles those.
 - Issue titles and descriptions cannot be edited after creation yet.
