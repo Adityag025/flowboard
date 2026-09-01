@@ -60,3 +60,17 @@ export const OPEN_STATUSES = [
   IssueStatus.TODO,
   IssueStatus.IN_PROGRESS,
 ] as const;
+
+/**
+ * Column order on the Kanban board, left to right.
+ *
+ * Lives here rather than beside the board query, because Client Components
+ * import it. See lib/board-types.ts for why that distinction matters.
+ */
+export const BOARD_COLUMNS = [
+  IssueStatus.BACKLOG,
+  IssueStatus.TODO,
+  IssueStatus.IN_PROGRESS,
+  IssueStatus.DONE,
+  IssueStatus.CANCELED,
+] as const;

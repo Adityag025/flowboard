@@ -55,7 +55,24 @@ export default auth((request) => {
   }
 
   if (isAuthRoute && isSignedIn) {
-    return Response.redirect(new URL("/dashboard", nextUrl.origin));
+    /**
+     * Honour `next` when it is there.
+     *
+     * This branch used to send everyone to /dashboard unconditionally, which
+     * silently threw away where they were going: follow a link to
+     * /projects/FLOW while signed out, get bounced to /login?next=/projects/FLOW,
+     * and then -- because the session was still valid -- land on the dashboard
+     * instead of the page you asked for.
+     *
+     * Same open-redirect rule as the login action: only same-site absolute
+     * paths, never a protocol-relative "//evil.com".
+     */
+    const requested = nextUrl.searchParams.get("next");
+    const destination =
+      requested && requested.startsWith("/") && !requested.startsWith("//")
+        ? requested
+        : "/dashboard";
+    return Response.redirect(new URL(destination, nextUrl.origin));
   }
 
   return undefined;
