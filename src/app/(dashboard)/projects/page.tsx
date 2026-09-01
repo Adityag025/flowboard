@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { requireUser } from "@/lib/authz";
 import { workspaceIdsFor } from "@/lib/queries/workspaces";
@@ -43,21 +44,27 @@ export default async function ProjectsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
-        <p className="text-sm text-muted">
-          {projects.length} {projects.length === 1 ? "project" : "projects"}
-        </p>
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
+          <p className="text-sm text-muted">
+            {projects.length} {projects.length === 1 ? "project" : "projects"}
+          </p>
+        </div>
+
+        <Link href="/projects/new">
+          <Button>New project</Button>
+        </Link>
       </header>
 
       {projects.length === 0 ? (
         <Card>
           <p className="text-sm text-muted">
-            No projects yet. Run{" "}
-            <code className="rounded bg-surface-hover px-1 py-0.5 font-mono text-xs">
-              npm run db:seed
-            </code>{" "}
-            to create a starter project.
+            No projects yet.{" "}
+            <Link href="/projects/new" className="text-accent hover:underline">
+              Create your first one
+            </Link>
+            .
           </p>
         </Card>
       ) : (

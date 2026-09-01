@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, Search, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
+import { GlobalSearch } from "./global-search";
 import { useSidebar } from "./sidebar-context";
 import { UserMenu, type SessionUser } from "./user-menu";
 
@@ -11,13 +12,12 @@ import { UserMenu, type SessionUser } from "./user-menu";
  * serialisable object from the server layout -- functions and class instances
  * cannot cross that boundary, but data can.
  *
- * The search field is still an inert placeholder; it becomes real in Stage 5.
  */
 export function Header({ user }: { user: SessionUser }) {
   const { isOpen, toggle } = useSidebar();
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center gap-3 border-b border-border bg-surface px-4">
+    <header className="fixed inset-x-0 top-0 z-50 flex h-11 items-center gap-3 border-b border-border bg-canvas px-3">
       <button
         type="button"
         onClick={toggle}
@@ -28,26 +28,19 @@ export function Header({ user }: { user: SessionUser }) {
         {isOpen ? <X className="size-5" /> : <Menu className="size-5" />}
       </button>
 
-      <Link href="/dashboard" className="flex items-center gap-2">
-        <span className="grid size-6 place-items-center rounded bg-accent text-xs font-bold text-accent-foreground">
-          F
+      <Link href="/dashboard" className="flex items-center gap-1.5">
+        {/* A bracketed wordmark rather than a rounded logo tile: the brackets
+            are the motif, and they cost no image. */}
+        <span className="text-accent">[</span>
+        <span className="text-xs font-semibold uppercase tracking-[0.18em]">
+          flowboard
         </span>
-        <span className="text-sm font-semibold tracking-tight">FlowBoard</span>
+        <span className="text-accent">]</span>
       </Link>
 
       <div className="flex-1" />
 
-      <div className="relative hidden sm:block">
-        <Search
-          className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted"
-          aria-hidden="true"
-        />
-        <input
-          type="search"
-          placeholder="Search issues..."
-          className="h-8 w-56 rounded-md border border-border bg-canvas pl-8 pr-3 text-sm outline-none transition-colors placeholder:text-muted focus:border-accent"
-        />
-      </div>
+      <GlobalSearch />
 
       <UserMenu user={user} />
     </header>

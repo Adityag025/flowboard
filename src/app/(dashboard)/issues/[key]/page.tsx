@@ -13,8 +13,10 @@ import { isAIConfigured } from "@/lib/ai/provider";
 import { requireUser } from "@/lib/authz";
 import {
   issueKey,
+  priorityGlyphs,
   priorityLabels,
   priorityVariants,
+  statusGlyphs,
   statusLabels,
   statusVariants,
 } from "@/lib/issues";
@@ -75,17 +77,22 @@ export default async function IssueDetailPage({ params }: Params) {
           <header className="space-y-3">
             <h1 className="text-2xl font-semibold tracking-tight">{issue.title}</h1>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={statusVariants[issue.status]}>
+              <Badge variant={statusVariants[issue.status]} glyph={statusGlyphs[issue.status]}>
                 {statusLabels[issue.status]}
               </Badge>
-              <Badge variant={priorityVariants[issue.priority]}>
+              <Badge variant={priorityVariants[issue.priority]} glyph={priorityGlyphs[issue.priority]}>
                 {priorityLabels[issue.priority]}
               </Badge>
               {issue.labels.map(({ label }) => (
-                <Badge
-                  key={label.id}
-                  style={{ backgroundColor: `${label.color}1a`, color: label.color }}
-                >
+                // The user's chosen colour survives here as a small marker
+                // beside muted text -- present, but not flooding the row the way
+                // a filled chip did.
+                <Badge key={label.id}>
+                  <span
+                    aria-hidden="true"
+                    className="mr-1 inline-block size-1.5"
+                    style={{ background: label.color }}
+                  />
                   {label.name}
                 </Badge>
               ))}
@@ -102,7 +109,7 @@ export default async function IssueDetailPage({ params }: Params) {
               // whitespace-pre-wrap preserves the author's line breaks. The text
               // is rendered as TEXT, never as HTML -- React escapes it, so a
               // description containing <script> is displayed, not executed.
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">
+              <p className="prose-face whitespace-pre-wrap text-sm">
                 {issue.description}
               </p>
             ) : (
@@ -129,7 +136,7 @@ export default async function IssueDetailPage({ params }: Params) {
                           {comment.editedAt ? " (edited)" : ""}
                         </span>
                       </div>
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                      <p className="prose-face whitespace-pre-wrap text-sm">
                         {comment.body}
                       </p>
                     </Card>

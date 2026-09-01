@@ -35,7 +35,7 @@ export function Sidebar() {
         onClick={close}
         aria-hidden="true"
         className={cn(
-          "fixed inset-0 top-14 z-30 bg-black/40 transition-opacity duration-[var(--dur-drawer)] ease-[var(--ease-out-strong)] lg:hidden",
+          "fixed inset-0 top-11 z-30 bg-black/40 transition-opacity duration-[var(--dur-drawer)] ease-[var(--ease-out-strong)] lg:hidden",
           isOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       />
@@ -46,16 +46,14 @@ export function Sidebar() {
           // The drawer curve, not the default ease-out: a panel sliding the full width
           // of the screen wants a curve that decelerates late, or it looks like it
           // stops short.
-          "fixed bottom-0 left-0 top-14 z-40 flex w-60 flex-col border-r border-border bg-surface transition-transform duration-[var(--dur-drawer)] ease-[var(--ease-drawer)]",
+          "fixed bottom-0 left-0 top-11 z-40 flex w-52 flex-col border-r border-border bg-canvas transition-transform duration-[var(--dur-drawer)] ease-[var(--ease-drawer)]",
           // On desktop the sidebar is always visible; the transform is neutralised.
           "lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="px-3 pt-5">
-          <p className="px-3 text-xs font-medium uppercase tracking-wider text-muted">
-            Workspace
-          </p>
+        <div className="px-3 pt-4">
+          <p className="rule-label">workspace</p>
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-3">
@@ -85,13 +83,16 @@ function SidebarLink({ item, pathname }: { item: NavItem; pathname: string }) {
       href={item.href}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+        // A 2px left marker marks the active route instead of a filled pill.
+        // Boxes are what the whole design is trying to avoid, and a marker in
+        // the gutter is how a terminal shows position.
+        "flex items-center gap-2.5 border-l-2 px-3 py-1.5 text-xs uppercase tracking-wider transition-colors",
         isActive
-          ? "bg-accent-subtle text-accent"
-          : "text-muted hover:bg-surface-hover hover:text-foreground",
+          ? "border-accent text-accent"
+          : "border-transparent text-muted hover:border-border hover:text-foreground",
       )}
     >
-      <Icon className="size-4 shrink-0" aria-hidden="true" />
+      <Icon className="size-3.5 shrink-0" aria-hidden="true" />
       {item.label}
     </Link>
   );

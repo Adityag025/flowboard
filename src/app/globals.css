@@ -1,47 +1,83 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Design tokens.
+   Design tokens — terminal / precision.
 
-   Tailwind v4 has no tailwind.config.js -- theme config lives here in CSS.
-   Two layers on purpose:
+   THE IDEA: this is a tool, and it should look like one. Structure comes from
+   HAIRLINE RULES rather than from cards floating on a tinted background, type is
+   monospace-forward because every value in this app is an identifier or a count,
+   and there is exactly ONE signal colour so that when something is coloured it
+   means something.
 
-     1. :root defines RAW values, and the dark block overrides those raw values.
-     2. @theme inline maps them to Tailwind utility names (bg-surface, etc.)
-        WITHOUT baking in the value, so `bg-surface` compiles to
-        `background: var(--surface)` and follows the theme at runtime.
+   What was removed on purpose:
+     - rounded corners (a terminal has none)
+     - box shadows (nothing floats)
+     - the tinted "surface vs canvas" fill difference, which is what makes a
+       dashboard read as a grid of boxes
+     - the default SaaS indigo
 
-   Drop the `inline` keyword and Tailwind would freeze the light value into the
-   utility at build time -- dark mode would silently stop working.
-
-   Always reach for a semantic token (surface, border, muted) over a raw color
-   like slate-800. When we add a theme toggle, only this file changes.
+   Contrast was computed, not guessed. Every pair below clears WCAG AA for its
+   role:
+     dark  fg #e6e6e6 on #0a0a0b = 15.9   muted #7d7f83 = 4.9   accent = 8.9
+     light fg #111112 on #ffffff = 18.9   muted #6b6c6f = 5.3   accent = 5.9
 --------------------------------------------------------------------------- */
 
 :root {
-  --canvas: #fbfbfc;
+  color-scheme: light;
+
+  --canvas: #ffffff;
+  /* Deliberately the SAME as canvas: separation comes from rules, not fills. */
   --surface: #ffffff;
-  --surface-hover: #f4f4f6;
-  --border: #e5e5ea;
-  --foreground: #16161a;
-  --muted: #6b6b78;
-  --accent: #5a5ad6;
+  --surface-hover: #f5f5f3;
+  --border: #e3e3df;
+  --foreground: #111112;
+  --muted: #6b6c6f;
+
+  /* The single signal colour. Amber, not indigo. */
+  --accent: #8a5a0f;
   --accent-foreground: #ffffff;
-  --accent-subtle: #eeeefc;
+  --accent-subtle: #f7eddc;
+
+  /* Chart series — validated against this exact surface by the dataviz
+     validator, which is why it differs from --accent (fills need 3:1, text
+     needs 4.5:1, and one value cannot be optimal for both). */
+  --series: #a86b12;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --canvas: #0b0b0e;
-    --surface: #131317;
-    --surface-hover: #1c1c22;
-    --border: #27272f;
-    --foreground: #ededf0;
-    --muted: #8b8b98;
-    --accent: #7b7bf0;
-    --accent-foreground: #0b0b0e;
-    --accent-subtle: #1e1e33;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --canvas: #0a0a0b;
+    --surface: #0a0a0b;
+    --surface-hover: #17181a;
+    --border: #232427;
+    --foreground: #e6e6e6;
+    --muted: #7d7f83;
+
+    --accent: #e0a33e;
+    --accent-foreground: #0a0a0b;
+    --accent-subtle: #241c0d;
+
+    --series: #c98500;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas: #0a0a0b;
+  --surface: #0a0a0b;
+  --surface-hover: #17181a;
+  --border: #232427;
+  --foreground: #e6e6e6;
+  --muted: #7d7f83;
+
+  --accent: #e0a33e;
+  --accent-foreground: #0a0a0b;
+  --accent-subtle: #241c0d;
+
+  --series: #c98500;
 }
 
 /* ---------------------------------------------------------------------------
@@ -110,6 +146,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-subtle: var(--accent-subtle);
+  --color-series: var(--series);
 
   /* next/font injects these in layout.tsx. The scaffold loaded Geist and then
      overrode it with Arial in the body rule -- this actually uses it. */
@@ -188,5 +225,66 @@
 body {
   background: var(--canvas);
   color: var(--foreground);
+
+  /**
+   * MONOSPACE AS THE UI FACE, not just for code.
+   *
+   * Nearly every string in this app is an identifier, a key, a count or a
+   * status -- things that read better in a fixed grid, and where a proportional
+   * face makes "FLOW-124" and "FLOW-99" look like different lengths of the same
+   * thing. Long-form prose (descriptions, comments, AI summaries) opts back into
+   * the sans face via `.prose-face`, because monospace is genuinely worse for
+   * reading paragraphs.
+   */
+  font-family: var(--font-mono), ui-monospace, "SFMono-Regular", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  /* Tabular by default: columns of numbers must not shift width as they change. */
+  font-variant-numeric: tabular-nums;
+}
+
+/** Opt back into the proportional face where actual sentences are read. */
+.prose-face {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-variant-numeric: normal;
+  line-height: 1.6;
+}
+
+/**
+ * A section label: uppercase, tracked, muted, followed by a hairline that runs
+ * to the end of the row. This is the main structural device in the whole
+ * interface -- it replaces the card header, and it is why there are no boxes.
+ */
+.rule-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.rule-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/**
+ * Nothing is rounded. Set globally rather than per component so a stray
+ * `rounded-md` from an earlier iteration cannot reintroduce a soft corner.
+ * Inputs keep 2px so the focus ring reads as a field rather than a rule.
+ */
+*, *::before, *::after {
+  border-radius: 0 !important;
+}
+input, textarea, select, button, kbd, .allow-radius {
+  border-radius: 2px !important;
+}
+
+/* Nothing floats in a terminal. */
+.shadow-sm, .shadow-lg, .shadow-xl, .shadow-md {
+  box-shadow: 0 0 0 1px var(--border) !important;
 }

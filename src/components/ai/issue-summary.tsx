@@ -139,7 +139,7 @@ export function IssueSummary({
           // rather than leaving the region silent until it happens to be read.
           aria-live="polite"
           className={cn(
-            "whitespace-pre-wrap text-xs leading-relaxed text-muted",
+            "prose-face whitespace-pre-wrap text-xs text-muted",
             status === "streaming" && "after:animate-pulse after:content-['▍']",
           )}
         >

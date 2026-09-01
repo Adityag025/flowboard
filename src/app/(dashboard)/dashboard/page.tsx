@@ -2,15 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card, Section } from "@/components/ui/card";
 import { IssueStatus } from "@/generated/prisma/enums";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import {
   OPEN_STATUSES,
   issueKey,
+  priorityGlyphs,
   priorityLabels,
   priorityVariants,
+  statusGlyphs,
   statusLabels,
   statusVariants,
 } from "@/lib/issues";
@@ -121,47 +123,56 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <h1 className="text-lg font-medium tracking-tight">
           {greeting()}, {firstName}
         </h1>
-        <p className="text-sm text-muted">
-          Here&apos;s what&apos;s happening with your projects.
+        <p className="text-xs text-muted">
+          {/* A terminal-style prompt line: quiet, and it reads as machine output
+              rather than marketing copy. */}
+          <span className="text-accent">&gt;</span> here&apos;s what&apos;s
+          happening with your projects
         </p>
       </header>
 
+      {/*
+        One bordered strip divided by rules, not three floating cards. The
+        numbers are the loudest thing on the page, which is correct -- they are
+        why someone opened it.
+      */}
       <section
         aria-label="Summary"
-        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        className="grid grid-cols-1 border border-border sm:grid-cols-3"
       >
         {stats.map((stat) => (
-          <Card key={stat.label}>
-            <p className="text-3xl font-semibold tabular-nums">{stat.value}</p>
-            <p className="mt-1 text-sm text-muted">{stat.label}</p>
-          </Card>
+          <div
+            key={stat.label}
+            className="border-b border-border px-4 py-3 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0"
+          >
+            <p className="text-2xl font-medium tabular-nums">{stat.value}</p>
+            <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted">
+              {stat.label}
+            </p>
+          </div>
         ))}
       </section>
 
-      <section aria-label="Recent issues" className="space-y-3">
-        <h2 className="text-sm font-medium text-muted">Recent Issues</h2>
-
+      <Section label="recent" meta={`${recentIssues.length} shown`}>
         {recentIssues.length === 0 ? (
-          <Card>
-            <p className="text-sm text-muted">
-              No issues yet. Create your first one to get started.
-            </p>
-          </Card>
+          <p className="text-xs text-muted">
+            No issues yet. Create your first one to get started.
+          </p>
         ) : (
-          <Card className="p-0">
+          <div className="border border-border">
             <ul className="divide-y divide-border">
               {recentIssues.map((issue) => (
                 <li
                   key={issue.id}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3.5 transition-colors hover:bg-surface-hover"
+                  className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 transition-colors hover:bg-surface-hover"
                 >
-                  <span className="font-mono text-xs text-muted">
+                  <span className="text-[11px] text-accent">
                     {issueKey(issue.project.key, issue.number)}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-sm">
+                  <span className="min-w-0 flex-1 truncate text-xs">
                     {issue.title}
                   </span>
 
@@ -171,18 +182,18 @@ export default async function DashboardPage() {
                     ))}
                   </span>
 
-                  <Badge variant={priorityVariants[issue.priority]}>
+                  <Badge variant={priorityVariants[issue.priority]} glyph={priorityGlyphs[issue.priority]}>
                     {priorityLabels[issue.priority]}
                   </Badge>
-                  <Badge variant={statusVariants[issue.status]}>
+                  <Badge variant={statusVariants[issue.status]} glyph={statusGlyphs[issue.status]}>
                     {statusLabels[issue.status]}
                   </Badge>
                 </li>
               ))}
             </ul>
-          </Card>
+          </div>
         )}
-      </section>
+      </Section>
     </div>
   );
 }

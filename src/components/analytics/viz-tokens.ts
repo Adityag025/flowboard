@@ -96,27 +96,37 @@ export const VIZ_CSS = `
 }
 
 .viz {
-  --viz-series: #2a78d6;
-  --viz-grid: #e5e5ea;
-  --viz-surface: #ffffff;
+  /* Reads the app's single signal colour rather than carrying its own palette,
+     so a theme change moves the charts too. Both values were validated against
+     their own surface by the dataviz validator -- fills need 3:1, and the
+     accent used for TEXT needs 4.5:1, so they are deliberately different hexes. */
+  --viz-series: var(--series);
+  --viz-grid: var(--border);
+  --viz-surface: var(--canvas);
   /* Ordinal ramp, light: lightest = least, darkest = most. */
-  --viz-ord-1: #86b6ef;
-  --viz-ord-2: #5598e7;
-  --viz-ord-3: #2a78d6;
-  --viz-ord-4: #1c5cab;
-  --viz-ord-5: #104281;
+  /* Ordinal ramp, LIGHT mode: lightest = least, darkest = most.
+     Validated with --ordinal against #ffffff. The obvious first attempt started
+     at #f0d9ab, which FAILED the 2:1 light-end floor at 1.38:1 -- a step that
+     pale is indistinguishable from the page. */
+  --viz-ord-1: #cfa64a;
+  --viz-ord-2: #b8871f;
+  --viz-ord-3: #9a6d16;
+  --viz-ord-4: #74500e;
+  --viz-ord-5: #4a3106;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .viz {
-    --viz-series: #3987e5;
-    --viz-grid: #27272f;
-    --viz-surface: #131317;
-    /* Reversed: on dark, brighter reads as more. */
-    --viz-ord-1: #184f95;
-    --viz-ord-2: #3987e5;
-    --viz-ord-3: #6da7ec;
-    --viz-ord-4: #9ec5f4;
-    --viz-ord-5: #cde2fb;
+    --viz-series: var(--series);
+    --viz-grid: var(--border);
+    --viz-surface: var(--canvas);
+    /* Reversed for dark: brighter reads as MORE. Validated against #0a0a0b --
+       the darkest step has to clear 2:1 or "no priority" disappears into the
+       page; #553606 failed that at 1.81:1. */
+    --viz-ord-1: #7a5711;
+    --viz-ord-2: #a37619;
+    --viz-ord-3: #c99b3f;
+    --viz-ord-4: #e2c383;
+    --viz-ord-5: #f3e0bd;
   }
 }
 `;

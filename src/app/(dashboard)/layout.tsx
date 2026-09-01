@@ -33,8 +33,8 @@ export default async function DashboardLayout({
         user={{ name: session.user.name ?? null, email: session.user.email ?? null }}
       />
       <Sidebar />
-      <main className="pt-14 lg:pl-60">
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>
+      <main className="pt-11 lg:pl-52">
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">{children}</div>
       </main>
     </SidebarProvider>
   );

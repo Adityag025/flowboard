@@ -22,6 +22,29 @@ export const statusLabels = {
   [IssueStatus.CANCELED]: "Canceled",
 } satisfies Record<IssueStatus, string>;
 
+/**
+ * Status GLYPHS, which carry the state so colour never has to.
+ *
+ * Read as a progression: ○ not started -> ◐ underway -> ● complete, with ✕ for
+ * abandoned. A screen reader gets the label text; the glyph is aria-hidden.
+ */
+export const statusGlyphs = {
+  [IssueStatus.BACKLOG]: "·",
+  [IssueStatus.TODO]: "○",
+  [IssueStatus.IN_PROGRESS]: "◐",
+  [IssueStatus.DONE]: "●",
+  [IssueStatus.CANCELED]: "✕",
+} satisfies Record<IssueStatus, string>;
+
+/** Priority glyphs: escalating marks, with urgency pointing up. */
+export const priorityGlyphs = {
+  [IssuePriority.NONE]: "",
+  [IssuePriority.LOW]: "▁",
+  [IssuePriority.MEDIUM]: "▄",
+  [IssuePriority.HIGH]: "█",
+  [IssuePriority.URGENT]: "▲",
+} satisfies Record<IssuePriority, string>;
+
 export const statusVariants = {
   [IssueStatus.BACKLOG]: "neutral",
   [IssueStatus.TODO]: "slate",

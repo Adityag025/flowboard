@@ -67,8 +67,7 @@ export function BoardCard({
             {card.labels.map(({ label }) => (
               <span
                 key={label.id}
-                className="rounded px-1.5 py-0.5 text-[10px] font-medium"
-                style={{ backgroundColor: `${label.color}1a`, color: label.color }}
+                className="text-[10px] uppercase tracking-wider text-muted"
               >
                 {label.name}
               </span>
@@ -87,7 +86,7 @@ export function BoardCard({
         {card.assignee && (
           <span
             title={card.assignee.name}
-            className="grid size-5 place-items-center rounded-full bg-accent-subtle text-[9px] font-semibold text-accent"
+            className="text-[9px] text-muted"
           >
             {card.assignee.name
               .split(/\s+/)

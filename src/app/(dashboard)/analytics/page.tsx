@@ -6,7 +6,7 @@ import { BarChart } from "@/components/analytics/bar-chart";
 import { ColumnChart } from "@/components/analytics/column-chart";
 import { DataTable } from "@/components/analytics/data-table";
 import { ORDINAL_VARS, VIZ_CSS } from "@/components/analytics/viz-tokens";
-import { Card } from "@/components/ui/card";
+import { Card, Section } from "@/components/ui/card";
 import { requireUser } from "@/lib/authz";
 import { priorityLabels, statusLabels } from "@/lib/issues";
 import { getAnalytics } from "@/lib/queries/analytics";
@@ -106,9 +106,10 @@ export default async function AnalyticsPage({
       <style>{VIZ_CSS}</style>
 
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
-        <p className="text-sm text-muted">
-          {totalIssues} {totalIssues === 1 ? "issue" : "issues"}
+        <h1 className="text-lg font-medium tracking-tight">Analytics</h1>
+        <p className="text-xs text-muted">
+          <span className="text-accent">&gt;</span> {totalIssues}{" "}
+          {totalIssues === 1 ? "issue" : "issues"}
           {projectKey ? ` in ${projectKey}` : " across all projects"}
         </p>
       </header>
@@ -131,65 +132,62 @@ export default async function AnalyticsPage({
             Stat tiles, NOT charts. Four single numbers have no shape to compare
             and no trend to trace -- a chart would add ink and remove clarity.
           */}
-          <section aria-label="Summary" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* One strip divided by rules -- identical device to the dashboard, so
+              the two pages read as the same product rather than two designs. */}
+          <section
+            aria-label="Summary"
+            className="grid grid-cols-1 border border-border sm:grid-cols-2 lg:grid-cols-4"
+          >
             {stats.map((stat) => (
-              <Card key={stat.label}>
-                <p className="text-3xl font-semibold tabular-nums">{stat.value}</p>
-                <p className="mt-1 text-sm text-muted">{stat.label}</p>
+              <div
+                key={stat.label}
+                className="border-b border-border px-4 py-3 last:border-b-0 sm:[&:nth-child(-n+2)]:border-b lg:border-b-0 sm:border-r sm:[&:nth-child(2n)]:border-r-0 lg:[&]:border-r lg:last:border-r-0"
+              >
+                <p className="text-2xl font-medium tabular-nums">{stat.value}</p>
+                <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted">
+                  {stat.label}
+                </p>
                 {stat.hint && (
-                  <p className="mt-0.5 text-xs text-muted opacity-70">{stat.hint}</p>
+                  <p className="mt-0.5 text-[10px] text-muted opacity-60">{stat.hint}</p>
                 )}
-              </Card>
+              </div>
             ))}
           </section>
 
-          <section aria-label="Throughput">
-            <Card className="space-y-4">
-              <div className="space-y-0.5">
-                {/* The heading names the single series, which is why there is no
-                    legend box below. */}
-                <h2 className="text-sm font-medium">Issues completed per week</h2>
-                <p className="text-xs text-muted">
-                  {completedInRange} completed over the last {weeks} weeks
-                </p>
-              </div>
+          {/* The rule label names the single series, which is why no legend
+              box appears below it. */}
+          <Section
+            label="completed per week"
+            meta={`${completedInRange} over ${weeks} weeks`}
+          >
+            <div className="border border-border p-4">
               <ColumnChart data={throughputData} valueLabel="issue" />
-            </Card>
-          </section>
+            </div>
+          </Section>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="space-y-4">
-              <div className="space-y-0.5">
-                <h2 className="text-sm font-medium">Issues by status</h2>
-                <p className="text-xs text-muted">All issues, including completed</p>
+            <Section label="by status" meta="all issues">
+              <div className="border border-border p-4">
+                <BarChart data={statusData} valueLabel="issue" />
               </div>
-              <BarChart data={statusData} valueLabel="issue" />
-            </Card>
+            </Section>
 
-            <Card className="space-y-4">
-              <div className="space-y-0.5">
-                <h2 className="text-sm font-medium">Open issues by priority</h2>
-                <p className="text-xs text-muted">
-                  Closed issues excluded — their priority is history
-                </p>
+            <Section label="open by priority" meta="closed excluded">
+              <div className="border border-border p-4">
+                <BarChart data={priorityData} valueLabel="issue" />
               </div>
-              <BarChart data={priorityData} valueLabel="issue" />
-            </Card>
+            </Section>
           </div>
 
-          <section aria-label="Workload">
-            <Card className="space-y-4">
-              <div className="space-y-0.5">
-                <h2 className="text-sm font-medium">Open issues by assignee</h2>
-                <p className="text-xs text-muted">Who is carrying what</p>
-              </div>
+          <Section label="open by assignee" meta="who is carrying what">
+            <div className="border border-border p-4">
               <BarChart
                 data={workload.map((row) => ({ label: row.name, value: row.count }))}
                 valueLabel="issue"
                 emptyMessage="No open issues to assign."
               />
-            </Card>
-          </section>
+            </div>
+          </Section>
 
           <DataTable
             sections={[
