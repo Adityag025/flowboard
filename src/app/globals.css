@@ -461,6 +461,27 @@ input, textarea, select, button, kbd, .allow-radius {
   border-radius: 2px !important;
 }
 
+/**
+ * COMMAND PALETTE: NO ENTRANCE ANIMATION.
+ *
+ * shadcn's Dialog fades and zooms its content in over 100ms, which is right for
+ * an occasional dialog and wrong for this one. The palette opens on Cmd/Ctrl+K
+ * -- dozens of times a day for anyone who uses it -- and an entrance animation
+ * on something that frequent stops reading as polish and starts reading as lag:
+ * the interface feeling slower than it is. Raycast has no open animation for
+ * exactly this reason.
+ *
+ * The overlay has to be silenced too, or the backdrop still fades in behind an
+ * instant panel, which looks worse than either choice made consistently. It is
+ * a SIBLING of the content inside the portal, not an ancestor, so `:has()` on
+ * the shared portal is what reaches it.
+ */
+[data-slot="dialog-content"].palette-instant,
+[data-slot="dialog-portal"]:has([data-slot="dialog-content"].palette-instant)
+  [data-slot="dialog-overlay"] {
+  animation: none !important;
+}
+
 /* Nothing floats in a terminal. */
 .shadow-sm, .shadow-lg, .shadow-xl, .shadow-md {
   box-shadow: 0 0 0 1px var(--border) !important;

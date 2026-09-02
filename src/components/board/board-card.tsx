@@ -5,18 +5,27 @@ import { CSS } from "@dnd-kit/utilities";
 import Link from "next/link";
 
 import { IssuePriority } from "@/generated/prisma/enums";
-import { issueKey, priorityLabels } from "@/lib/issues";
+import {
+  issueKey,
+  priorityGlyphs,
+  priorityLabels,
+  priorityVariants,
+} from "@/lib/issues";
+import { Badge } from "@/components/ui/badge";
 import type { BoardCard as BoardCardData } from "@/lib/board-types";
 import { cn } from "@/lib/utils";
 
-const priorityDot: Record<IssuePriority, string> = {
-  [IssuePriority.NONE]: "bg-transparent border border-border",
-  [IssuePriority.LOW]: "bg-slate-500",
-  [IssuePriority.MEDIUM]: "bg-sky-500",
-  [IssuePriority.HIGH]: "bg-orange-500",
-  [IssuePriority.URGENT]: "bg-red-500",
-};
-
+/**
+ * The priority DOT that used to live here was the last survivor of the
+ * pre-redesign palette -- five saturated hues (slate / sky / orange / red) on a
+ * card, in an interface whose whole premise is one signal colour. It also put
+ * meaning in colour alone: a colourblind reader could not tell HIGH from URGENT,
+ * and neither could anyone printing the board.
+ *
+ * It now renders the same glyph + tone pair the issue list uses, so a priority
+ * looks identical wherever it appears, and the glyph carries the meaning while
+ * colour merely reinforces it.
+ */
 export function BoardCard({
   card,
   projectKey,
@@ -52,11 +61,29 @@ export function BoardCard({
         className="cursor-grab active:cursor-grabbing"
       >
         <div className="mb-2 flex items-center gap-2">
-          <span
-            className={cn("size-2 shrink-0 rounded-full", priorityDot[card.priority])}
-            title={priorityLabels[card.priority]}
-            aria-label={priorityLabels[card.priority]}
-          />
+          {card.priority === IssuePriority.NONE ? (
+            // A spacer, not nothing: NONE has no glyph, and dropping the slot
+            // would shift the issue key left on those cards only, so a column
+            // of keys would no longer line up.
+            <span className="w-2 shrink-0" aria-hidden="true" />
+          ) : (
+            <Badge
+              variant={priorityVariants[card.priority]}
+              glyph={priorityGlyphs[card.priority]}
+              title={priorityLabels[card.priority]}
+              className="shrink-0"
+            >
+              {/*
+                The label is present for screen readers but not drawn: the card
+                is 288px wide and the glyph already says it at a glance. An
+                `aria-label` on the old bare <span> was not a reliable
+                substitute -- with no role, it is not guaranteed to be announced.
+              */}
+              <span className="sr-only">
+                {priorityLabels[card.priority]} priority
+              </span>
+            </Badge>
+          )}
           <span className="font-mono text-[11px] text-muted-foreground">{key}</span>
         </div>
 

@@ -28,7 +28,7 @@ export function Field({
       </label>
       {children}
       {hasErrors && (
-        <p id={errorId} className={cn("text-xs text-red-500")}>
+        <p id={errorId} className={cn("text-xs text-destructive")}>
           {errors!.join(". ")}
         </p>
       )}

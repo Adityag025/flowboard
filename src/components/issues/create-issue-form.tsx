@@ -139,7 +139,7 @@ export function CreateIssueForm({
       )}
 
       {state?.formError && (
-        <p role="alert" className="text-sm text-red-500">
+        <p role="alert" className="text-sm text-destructive">
           {state.formError}
         </p>
       )}

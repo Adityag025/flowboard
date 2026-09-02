@@ -199,7 +199,15 @@ export function Board({
       {error && (
         <div
           role="alert"
-          className="flex items-start justify-between gap-3 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-500"
+          // --destructive, not Tailwind's red-500. This banner predates the
+          // terminal palette and was the last place an off-palette hue
+          // survived; --destructive is a value computed for these two exact
+          // surfaces (6.57:1 light, 7.10:1 dark) rather than a generic red.
+          //
+          // Deliberately still a BANNER and not a toast: a toast auto-dismisses,
+          // and this is the message explaining why the card the user just
+          // dragged slid back. It has to stay on screen until they dismiss it.
+          className="flex items-start justify-between gap-3 border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
         >
           <span>{error}</span>
           <button

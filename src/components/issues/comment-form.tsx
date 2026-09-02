@@ -37,10 +37,10 @@ export function CommentForm({ issueId }: { issueId: string }) {
         aria-invalid={Boolean(state?.fieldErrors?.body)}
       />
       {state?.fieldErrors?.body && (
-        <p className="text-xs text-red-500">{state.fieldErrors.body.join(". ")}</p>
+        <p className="text-xs text-destructive">{state.fieldErrors.body.join(". ")}</p>
       )}
       {state?.formError && (
-        <p role="alert" className="text-sm text-red-500">
+        <p role="alert" className="text-sm text-destructive">
           {state.formError}
         </p>
       )}
