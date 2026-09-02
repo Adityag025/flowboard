@@ -89,7 +89,7 @@ function SidebarLink({ item, pathname }: { item: NavItem; pathname: string }) {
         "flex items-center gap-2.5 border-l-2 px-3 py-1.5 text-xs uppercase tracking-wider transition-colors",
         isActive
           ? "border-accent text-accent"
-          : "border-transparent text-muted hover:border-border hover:text-foreground",
+          : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
       )}
     >
       <Icon className="size-3.5 shrink-0" aria-hidden="true" />

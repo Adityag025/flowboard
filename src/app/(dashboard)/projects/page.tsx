@@ -47,7 +47,7 @@ export default async function ProjectsPage() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             {projects.length} {projects.length === 1 ? "project" : "projects"}
           </p>
         </div>
@@ -59,7 +59,7 @@ export default async function ProjectsPage() {
 
       {projects.length === 0 ? (
         <Card>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             No projects yet.{" "}
             <Link href="/projects/new" className="text-accent hover:underline">
               Create your first one
@@ -78,20 +78,20 @@ export default async function ProjectsPage() {
                       <h2 className="truncate text-sm font-semibold">
                         {project.name}
                       </h2>
-                      <p className="mt-0.5 font-mono text-xs text-muted">
+                      <p className="mt-0.5 font-mono text-xs text-muted-foreground">
                         {project.key}
                       </p>
                     </div>
-                    <span className="shrink-0 rounded bg-surface-hover px-2 py-0.5 text-xs text-muted">
+                    <span className="shrink-0 rounded bg-surface-hover px-2 py-0.5 text-xs text-muted-foreground">
                       {project._count.issues} open
                     </span>
                   </div>
                   {project.description && (
-                    <p className="mt-3 line-clamp-2 text-sm text-muted">
+                    <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
                       {project.description}
                     </p>
                   )}
-                  <p className="mt-3 text-xs text-muted">
+                  <p className="mt-3 text-xs text-muted-foreground">
                     {project.workspace.name}
                   </p>
                 </Card>

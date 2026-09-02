@@ -59,7 +59,7 @@ export function IssueControls({
   return (
     <div className={cn("space-y-4 transition-opacity", isPending && "opacity-60")}>
       <div className="space-y-1.5">
-        <label htmlFor="control-status" className="block text-xs font-medium text-muted">
+        <label htmlFor="control-status" className="block text-xs font-medium text-muted-foreground">
           Status
         </label>
         <Select
@@ -79,7 +79,7 @@ export function IssueControls({
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor="control-priority" className="block text-xs font-medium text-muted">
+        <label htmlFor="control-priority" className="block text-xs font-medium text-muted-foreground">
           Priority
         </label>
         <Select
@@ -97,7 +97,7 @@ export function IssueControls({
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor="control-assignee" className="block text-xs font-medium text-muted">
+        <label htmlFor="control-assignee" className="block text-xs font-medium text-muted-foreground">
           Assignee
         </label>
         <Select

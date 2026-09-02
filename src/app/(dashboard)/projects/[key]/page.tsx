@@ -28,7 +28,7 @@ export default async function ProjectBoardPage({ params }: Params) {
 
   return (
     <div className="space-y-6">
-      <nav className="flex items-center gap-2 text-sm text-muted">
+      <nav className="flex items-center gap-2 text-sm text-muted-foreground">
         <Link href="/projects" className="transition-colors hover:text-foreground">
           Projects
         </Link>
@@ -41,7 +41,7 @@ export default async function ProjectBoardPage({ params }: Params) {
           <h1 className="text-2xl font-semibold tracking-tight">
             {board.project.name}
           </h1>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             {board.issues.length}{" "}
             {board.issues.length === 1 ? "issue" : "issues"} ·{" "}
             {board.project.workspace.name}
@@ -51,7 +51,7 @@ export default async function ProjectBoardPage({ params }: Params) {
         <div className="flex items-center gap-3 text-sm">
           <Link
             href={`/issues?projectKey=${board.project.key}`}
-            className="text-muted transition-colors hover:text-foreground"
+            className="text-muted-foreground transition-colors hover:text-foreground"
           >
             View as list
           </Link>
@@ -62,7 +62,7 @@ export default async function ProjectBoardPage({ params }: Params) {
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted-foreground">
           Drag a card to move it, or focus one and press Space, then the arrow
           keys.
         </p>

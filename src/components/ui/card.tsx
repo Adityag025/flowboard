@@ -40,7 +40,7 @@ export function Section({
     <section className={cn("space-y-3", className)}>
       <div className="flex items-center gap-3">
         <h2 className="rule-label flex-1">{label}</h2>
-        {meta && <span className="shrink-0 text-[10px] text-muted">{meta}</span>}
+        {meta && <span className="shrink-0 text-[10px] text-muted-foreground">{meta}</span>}
       </div>
       {children}
     </section>

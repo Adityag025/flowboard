@@ -126,7 +126,7 @@ export default async function DashboardPage() {
         <h1 className="text-lg font-medium tracking-tight">
           {greeting()}, {firstName}
         </h1>
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted-foreground">
           {/* A terminal-style prompt line: quiet, and it reads as machine output
               rather than marketing copy. */}
           <span className="text-accent">&gt;</span> here&apos;s what&apos;s
@@ -149,7 +149,7 @@ export default async function DashboardPage() {
             className="border-b border-border px-4 py-3 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0"
           >
             <p className="text-2xl font-medium tabular-nums">{stat.value}</p>
-            <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted">
+            <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
               {stat.label}
             </p>
           </div>
@@ -158,7 +158,7 @@ export default async function DashboardPage() {
 
       <Section label="recent" meta={`${recentIssues.length} shown`}>
         {recentIssues.length === 0 ? (
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted-foreground">
             No issues yet. Create your first one to get started.
           </p>
         ) : (
@@ -205,12 +205,12 @@ function EmptyState({ firstName }: { firstName: string }) {
         <h1 className="text-2xl font-semibold tracking-tight">
           {greeting()}, {firstName}
         </h1>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           You aren&apos;t a member of any workspace yet.
         </p>
       </header>
       <Card>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Workspaces are created automatically at signup. If you are seeing
           this, run{" "}
           <code className="rounded bg-surface-hover px-1 py-0.5 font-mono text-xs">

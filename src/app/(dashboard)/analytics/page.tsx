@@ -48,7 +48,7 @@ export default async function AnalyticsPage({
       <div className="space-y-4">
         <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
         <Card>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             You aren&apos;t a member of any workspace yet.
           </p>
         </Card>
@@ -107,7 +107,7 @@ export default async function AnalyticsPage({
 
       <header className="space-y-1">
         <h1 className="text-lg font-medium tracking-tight">Analytics</h1>
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted-foreground">
           <span className="text-accent">&gt;</span> {totalIssues}{" "}
           {totalIssues === 1 ? "issue" : "issues"}
           {projectKey ? ` in ${projectKey}` : " across all projects"}
@@ -118,7 +118,7 @@ export default async function AnalyticsPage({
 
       {totalIssues === 0 ? (
         <Card>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             No issues yet, so there is nothing to chart.{" "}
             <Link href="/issues/new" className="text-accent hover:underline">
               Create one
@@ -144,11 +144,11 @@ export default async function AnalyticsPage({
                 className="border-b border-border px-4 py-3 last:border-b-0 sm:[&:nth-child(-n+2)]:border-b lg:border-b-0 sm:border-r sm:[&:nth-child(2n)]:border-r-0 lg:[&]:border-r lg:last:border-r-0"
               >
                 <p className="text-2xl font-medium tabular-nums">{stat.value}</p>
-                <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted">
+                <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
                   {stat.label}
                 </p>
                 {stat.hint && (
-                  <p className="mt-0.5 text-[10px] text-muted opacity-60">{stat.hint}</p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground opacity-60">{stat.hint}</p>
                 )}
               </div>
             ))}

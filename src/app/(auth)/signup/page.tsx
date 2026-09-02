@@ -13,7 +13,7 @@ export default function SignupPage() {
         <h1 className="text-lg font-semibold tracking-tight">
           Create your account
         </h1>
-        <p className="text-sm text-muted">Start tracking work in minutes.</p>
+        <p className="text-sm text-muted-foreground">Start tracking work in minutes.</p>
       </div>
 
       <SignupForm />

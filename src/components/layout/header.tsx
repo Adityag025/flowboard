@@ -23,7 +23,7 @@ export function Header({ user }: { user: SessionUser }) {
         onClick={toggle}
         aria-label={isOpen ? "Close navigation" : "Open navigation"}
         aria-expanded={isOpen}
-        className="-ml-1 rounded-md p-2 text-muted transition-colors hover:bg-surface-hover hover:text-foreground lg:hidden"
+        className="-ml-1 rounded-md p-2 text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground lg:hidden"
       >
         {isOpen ? <X className="size-5" /> : <Menu className="size-5" />}
       </button>

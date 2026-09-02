@@ -95,7 +95,7 @@ export function IssueSummary({
   if (!aiConfigured) {
     return (
       <div className="rounded-md border border-dashed border-border p-3">
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted-foreground">
           AI summaries need <code className="font-mono">ANTHROPIC_API_KEY</code>{" "}
           in <code className="font-mono">.env.local</code>.
         </p>
@@ -106,7 +106,7 @@ export function IssueSummary({
   return (
     <div className="space-y-2 rounded-md border border-border p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="flex items-center gap-1.5 text-xs font-medium text-muted">
+        <h3 className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
           <Sparkles className="size-3.5" aria-hidden="true" />
           AI summary
           {wasCached && text && (
@@ -114,7 +114,7 @@ export function IssueSummary({
           )}
         </h3>
         <Button
-          variant="secondary"
+          variant="outline"
           onClick={generate}
           disabled={status === "streaming"}
           className="h-7 px-2 text-xs"
@@ -139,7 +139,7 @@ export function IssueSummary({
           // rather than leaving the region silent until it happens to be read.
           aria-live="polite"
           className={cn(
-            "prose-face whitespace-pre-wrap text-xs text-muted",
+            "prose-face whitespace-pre-wrap text-xs text-muted-foreground",
             status === "streaming" && "after:animate-pulse after:content-['▍']",
           )}
         >
@@ -148,7 +148,7 @@ export function IssueSummary({
       ) : (
         status !== "streaming" &&
         !error && (
-          <p className="text-xs text-muted opacity-70">
+          <p className="text-xs text-muted-foreground opacity-70">
             Summarize the issue and its comments.
           </p>
         )

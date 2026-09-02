@@ -42,7 +42,7 @@ export function BarChart({
   const total = data.reduce((sum, d) => sum + d.value, 0);
 
   if (total === 0) {
-    return <p className="py-6 text-sm text-muted">{emptyMessage}</p>;
+    return <p className="py-6 text-sm text-muted-foreground">{emptyMessage}</p>;
   }
 
   return (
@@ -67,7 +67,7 @@ export function BarChart({
             aria-describedby={isHovered ? tooltipId : undefined}
           >
             {/* Category label wears a TEXT token, never the series colour. */}
-            <span className="truncate text-xs text-muted" title={datum.label}>
+            <span className="truncate text-xs text-muted-foreground" title={datum.label}>
               {datum.label}
             </span>
 
@@ -127,7 +127,7 @@ export function BarChart({
                 {datum.label}: {datum.value} {valueLabel}
                 {datum.value === 1 ? "" : "s"}
                 {total > 0 && (
-                  <span className="text-muted">
+                  <span className="text-muted-foreground">
                     {" "}
                     · {Math.round((datum.value / total) * 100)}%
                   </span>

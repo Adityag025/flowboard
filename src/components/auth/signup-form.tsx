@@ -54,7 +54,7 @@ export function SignupForm() {
           minLength={8}
           aria-invalid={Boolean(state?.fieldErrors?.password)}
         />
-        <p className="text-xs text-muted">At least 8 characters.</p>
+        <p className="text-xs text-muted-foreground">At least 8 characters.</p>
       </Field>
 
       {state?.formError && (
@@ -65,7 +65,7 @@ export function SignupForm() {
 
       <SubmitButton>Create account</SubmitButton>
 
-      <p className="text-center text-sm text-muted">
+      <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
         <Link href="/login" className="text-accent hover:underline">
           Sign in

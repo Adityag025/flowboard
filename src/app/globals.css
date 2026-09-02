@@ -1,4 +1,24 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/**
+ * `dark:` VARIANT — rewired to this app's theming mechanism.
+ *
+ * shadcn's init wrote `@custom-variant dark (&:is(.dark *))`, which makes every
+ * `dark:` utility require a literal `.dark` class on an ancestor. This app has
+ * never used one -- it themes off `prefers-color-scheme` with a `data-theme`
+ * escape hatch -- so that definition silently made every `dark:` utility in the
+ * tree dead CSS, including the four inside shadcn's own Button. Nothing errors;
+ * the styles just never apply. This restores parity with the token blocks below,
+ * so a `dark:` utility fires under exactly the conditions that flip the tokens.
+ */
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:not([data-theme="light"] *) { @slot; }
+  }
+  &:is([data-theme="dark"] *) { @slot; }
+}
 
 /* ---------------------------------------------------------------------------
    Design tokens — terminal / precision.
@@ -31,7 +51,9 @@
   --surface-hover: #f5f5f3;
   --border: #e3e3df;
   --foreground: #111112;
-  --muted: #6b6c6f;
+  /* Muted TEXT. Named --muted-foreground, not --muted, to match shadcn's
+     convention -- see the alias note below. */
+  --muted-foreground: #6b6c6f;
 
   /* The single signal colour. Amber, not indigo. */
   --accent: #8a5a0f;
@@ -42,6 +64,64 @@
      validator, which is why it differs from --accent (fills need 3:1, text
      needs 4.5:1, and one value cannot be optimal for both). */
   --series: #a86b12;
+
+  /* ---- shadcn semantic aliases -----------------------------------------
+     Every shadcn component styles itself with these names, so rather than
+     restyle each one, the names are pointed at the terminal tokens once here.
+     Add a component and it inherits amber-on-white/black, square corners and
+     the hairline border for free.
+
+     Two of these names collided with mine and had to be reconciled, because
+     shadcn's meaning is baked into its components and cannot be argued with:
+
+       --muted   shadcn: a subtle BACKGROUND fill.  mine: muted TEXT.
+                 Resolved shadcn's way; my 101 `text-muted` call sites were
+                 renamed to `text-muted-foreground`. Had I kept my meaning,
+                 every shadcn `bg-muted` would have painted a fill in a text
+                 grey, and `text-muted-foreground` would have been undefined.
+
+       --accent  shadcn: the hover/selected fill on menu and list items.
+                 mine: the one signal colour.
+                 Kept as amber ON PURPOSE -- a selected row rendering as a solid
+                 amber block with near-black text is inverse video, which is what
+                 a terminal actually does for selection. --accent-foreground
+                 already pairs with it, so the contrast holds.
+     -------------------------------------------------------------------- */
+  --background: var(--canvas);
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface);
+  --popover-foreground: var(--foreground);
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-foreground);
+  --secondary: var(--surface-hover);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--surface-hover);
+  --input: var(--border);
+  --ring: var(--accent);
+  /* 6.57:1 on #ffffff — computed, not picked. */
+  --destructive: #b42318;
+
+  /* Square. A terminal has no rounded corners; the radius scale in @theme
+     derives from this, so one zero flattens every shadcn component. */
+  --radius: 0rem;
+
+  /* The validated ordinal ramp (see analytics/viz-tokens.ts). Present so a
+     shadcn chart lands in this palette instead of defaulting to neutral grey. */
+  --chart-1: #cfa64a;
+  --chart-2: #b8871f;
+  --chart-3: #9a6d16;
+  --chart-4: #74500e;
+  --chart-5: #4a3106;
+
+  --sidebar: var(--canvas);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--accent-foreground);
+  --sidebar-accent: var(--surface-hover);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--accent);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -53,13 +133,45 @@
     --surface-hover: #17181a;
     --border: #232427;
     --foreground: #e6e6e6;
-    --muted: #7d7f83;
+    --muted-foreground: #7d7f83;
 
     --accent: #e0a33e;
     --accent-foreground: #0a0a0b;
     --accent-subtle: #241c0d;
 
     --series: #c98500;
+
+    /* shadcn semantic aliases — see the light block for the reasoning. */
+    --background: var(--canvas);
+    --card: var(--surface);
+    --card-foreground: var(--foreground);
+    --popover: var(--surface);
+    --popover-foreground: var(--foreground);
+    --primary: var(--accent);
+    --primary-foreground: var(--accent-foreground);
+    --secondary: var(--surface-hover);
+    --secondary-foreground: var(--foreground);
+    --muted: var(--surface-hover);
+    --input: var(--border);
+    --ring: var(--accent);
+    /* 7.10:1 on #0a0a0b — computed. */
+    --destructive: #f97066;
+
+    /* Reversed for dark: brighter reads as MORE. */
+    --chart-1: #7a5711;
+    --chart-2: #a37619;
+    --chart-3: #c99b3f;
+    --chart-4: #e2c383;
+    --chart-5: #f3e0bd;
+
+    --sidebar: var(--canvas);
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--accent);
+    --sidebar-primary-foreground: var(--accent-foreground);
+    --sidebar-accent: var(--surface-hover);
+    --sidebar-accent-foreground: var(--foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--accent);
   }
 }
 
@@ -71,13 +183,45 @@
   --surface-hover: #17181a;
   --border: #232427;
   --foreground: #e6e6e6;
-  --muted: #7d7f83;
+  --muted-foreground: #7d7f83;
 
   --accent: #e0a33e;
   --accent-foreground: #0a0a0b;
   --accent-subtle: #241c0d;
 
   --series: #c98500;
+
+  /* shadcn semantic aliases — see the light block for the reasoning. */
+  --background: var(--canvas);
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface);
+  --popover-foreground: var(--foreground);
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-foreground);
+  --secondary: var(--surface-hover);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--surface-hover);
+  --input: var(--border);
+  --ring: var(--accent);
+  /* 7.10:1 on #0a0a0b — computed. */
+  --destructive: #f97066;
+
+  /* Reversed for dark: brighter reads as MORE. */
+  --chart-1: #7a5711;
+  --chart-2: #a37619;
+  --chart-3: #c99b3f;
+  --chart-4: #e2c383;
+  --chart-5: #f3e0bd;
+
+  --sidebar: var(--canvas);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--accent-foreground);
+  --sidebar-accent: var(--surface-hover);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--accent);
 }
 
 /* ---------------------------------------------------------------------------
@@ -152,6 +296,40 @@
      overrode it with Arial in the body rule -- this actually uses it. */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-destructive: var(--destructive);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 /**
@@ -224,7 +402,6 @@
 
 body {
   background: var(--canvas);
-  color: var(--foreground);
 
   /**
    * MONOSPACE AS THE UI FACE, not just for code.
@@ -287,4 +464,24 @@ input, textarea, select, button, kbd, .allow-radius {
 /* Nothing floats in a terminal. */
 .shadow-sm, .shadow-lg, .shadow-xl, .shadow-md {
   box-shadow: 0 0 0 1px var(--border) !important;
+}
+
+/**
+ * shadcn's init also emitted a `.dark { ... }` block of neutral-grey tokens.
+ * Removed rather than kept: this app never applies a `.dark` class, so it was
+ * unreachable -- and had anyone later added one, it would have overridden the
+ * amber signal colour with grey. The dark values live in the two blocks above,
+ * keyed to the mechanism the app actually uses.
+ */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }

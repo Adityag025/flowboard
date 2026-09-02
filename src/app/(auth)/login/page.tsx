@@ -23,7 +23,7 @@ export default async function LoginPage({
     <div className="space-y-6">
       <div className="space-y-1">
         <h1 className="text-lg font-semibold tracking-tight">Welcome back</h1>
-        <p className="text-sm text-muted">Sign in to continue to FlowBoard.</p>
+        <p className="text-sm text-muted-foreground">Sign in to continue to FlowBoard.</p>
       </div>
 
       {/* Populated when Auth.js redirects a failure here via pages.error. */}

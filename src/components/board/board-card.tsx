@@ -57,7 +57,7 @@ export function BoardCard({
             title={priorityLabels[card.priority]}
             aria-label={priorityLabels[card.priority]}
           />
-          <span className="font-mono text-[11px] text-muted">{key}</span>
+          <span className="font-mono text-[11px] text-muted-foreground">{key}</span>
         </div>
 
         <p className="text-sm leading-snug">{card.title}</p>
@@ -67,7 +67,7 @@ export function BoardCard({
             {card.labels.map(({ label }) => (
               <span
                 key={label.id}
-                className="text-[10px] uppercase tracking-wider text-muted"
+                className="text-[10px] uppercase tracking-wider text-muted-foreground"
               >
                 {label.name}
               </span>
@@ -79,14 +79,14 @@ export function BoardCard({
       <div className="mt-2 flex items-center justify-between">
         <Link
           href={`/issues/${key}`}
-          className="text-[11px] text-muted transition-colors hover:text-accent"
+          className="text-[11px] text-muted-foreground transition-colors hover:text-accent"
         >
           Open
         </Link>
         {card.assignee && (
           <span
             title={card.assignee.name}
-            className="text-[9px] text-muted"
+            className="text-[9px] text-muted-foreground"
           >
             {card.assignee.name
               .split(/\s+/)

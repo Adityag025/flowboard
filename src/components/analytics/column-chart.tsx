@@ -42,7 +42,7 @@ export function ColumnChart({
 
   if (total === 0) {
     return (
-      <p className="py-6 text-sm text-muted">
+      <p className="py-6 text-sm text-muted-foreground">
         Nothing completed in this period yet.
       </p>
     );
@@ -52,7 +52,7 @@ export function ColumnChart({
     <div className="viz">
       <div className="flex gap-3">
         {/* Y axis: ticks carry the values that are not directly labelled. */}
-        <div className="flex w-6 flex-col justify-between py-1 text-right text-[10px] tabular-nums text-muted">
+        <div className="flex w-6 flex-col justify-between py-1 text-right text-[10px] tabular-nums text-muted-foreground">
           {ticks.map((tick) => (
             <span key={tick}>{tick}</span>
           ))}
@@ -134,7 +134,7 @@ export function ColumnChart({
             {data.map((datum, index) => (
               <span
                 key={datum.label}
-                className="flex-1 text-center text-[10px] text-muted"
+                className="flex-1 text-center text-[10px] text-muted-foreground"
               >
                 {data.length > 8 && index % 2 === 1 ? "" : datum.label}
               </span>

@@ -26,14 +26,14 @@ export default async function NewProjectPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">New project</h1>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           A project groups issues and gives them a key prefix.
         </p>
       </header>
 
       {workspaces.length === 0 ? (
         <Card>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             You need to be in a workspace before you can create a project.
           </p>
         </Card>

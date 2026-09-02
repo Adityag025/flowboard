@@ -17,11 +17,11 @@ import { cn } from "@/lib/utils";
  *   and ▲ for urgency, which points upward like a raised hand.
  */
 const variants = {
-  neutral: "text-muted",
-  slate: "text-muted",
+  neutral: "text-muted-foreground",
+  slate: "text-muted-foreground",
   amber: "text-accent",
   emerald: "text-foreground",
-  sky: "text-muted",
+  sky: "text-muted-foreground",
   orange: "text-accent",
   red: "text-accent",
 } as const;

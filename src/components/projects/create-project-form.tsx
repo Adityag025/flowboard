@@ -83,7 +83,7 @@ export function CreateProjectForm({
           placeholder="MA"
           aria-invalid={Boolean(state?.fieldErrors?.key)}
         />
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted-foreground">
           Issues will be numbered{" "}
           <span className="font-mono">{keyValue || "KEY"}-1</span>,{" "}
           <span className="font-mono">{keyValue || "KEY"}-2</span>, and so on. This
@@ -112,7 +112,7 @@ export function CreateProjectForm({
         <SubmitButton>Create project</SubmitButton>
         <Link
           href="/projects"
-          className="text-sm text-muted transition-colors hover:text-foreground"
+          className="text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           Cancel
         </Link>

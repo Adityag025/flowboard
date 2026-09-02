@@ -59,7 +59,7 @@ export function LoginForm({ next }: { next?: string }) {
 
       <SubmitButton>Sign in</SubmitButton>
 
-      <p className="text-center text-sm text-muted">
+      <p className="text-center text-sm text-muted-foreground">
         No account?{" "}
         <Link href="/signup" className="text-accent hover:underline">
           Create one

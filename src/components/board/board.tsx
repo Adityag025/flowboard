@@ -296,10 +296,10 @@ function Column({
   return (
     <section className="flex w-72 shrink-0 flex-col">
       <header className="mb-2 flex items-center justify-between px-1">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {statusLabels[status]}
         </h2>
-        <span className="text-xs tabular-nums text-muted">{cards.length}</span>
+        <span className="text-xs tabular-nums text-muted-foreground">{cards.length}</span>
       </header>
 
       <div

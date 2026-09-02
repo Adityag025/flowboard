@@ -27,7 +27,7 @@ export function DataTable({
       <div className="grid gap-6 border-t border-border px-5 py-4 sm:grid-cols-2">
         {sections.map((section) => (
           <div key={section.title}>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {section.title}
             </h3>
             <table className="w-full text-sm">
@@ -35,7 +35,7 @@ export function DataTable({
                   table for assistive tech rather than relying on proximity. */}
               <caption className="sr-only">{section.title}</caption>
               <thead>
-                <tr className="text-left text-xs text-muted">
+                <tr className="text-left text-xs text-muted-foreground">
                   <th scope="col" className="pb-1 font-medium">Category</th>
                   <th scope="col" className="pb-1 text-right font-medium">Value</th>
                 </tr>

@@ -78,7 +78,7 @@ export function SettingsForm({
               readOnly={field.disabled}
               aria-invalid={Boolean(errors)}
             />
-            {field.hint && <p className="text-xs text-muted">{field.hint}</p>}
+            {field.hint && <p className="text-xs text-muted-foreground">{field.hint}</p>}
           </Field>
         );
       })}
@@ -92,7 +92,11 @@ export function SettingsForm({
       {state?.ok && state.message && (
         // aria-live, not role="alert": success is informational, and an alert
         // interrupts whatever a screen reader is currently reading.
-        <p aria-live="polite" className="text-sm text-emerald-600 dark:text-emerald-400">
+        // Amber, not emerald: this design has exactly one signal colour, so a
+        // second hue for "success" would dilute what colour means here -- and
+        // the emerald pair depended on a `dark:` variant that shadcn's init had
+        // just made inert anyway.
+        <p aria-live="polite" className="text-sm text-accent">
           {state.message}
         </p>
       )}

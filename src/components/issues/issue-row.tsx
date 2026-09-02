@@ -22,7 +22,7 @@ export function IssueRow({ issue }: { issue: IssueListItem }) {
         href={`/issues/${key}`}
         className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3.5"
       >
-        <span className="font-mono text-xs text-muted">{key}</span>
+        <span className="font-mono text-xs text-muted-foreground">{key}</span>
 
         <span className="min-w-0 flex-1 truncate text-sm">{issue.title}</span>
 
@@ -53,7 +53,7 @@ export function IssueRow({ issue }: { issue: IssueListItem }) {
           a broken image.
         */}
         <span
-          className="w-8 shrink-0 text-center text-[10px] text-muted"
+          className="w-8 shrink-0 text-center text-[10px] text-muted-foreground"
           title={issue.assignee?.name ?? "Unassigned"}
         >
           {issue.assignee

@@ -19,7 +19,7 @@ export function LabelPicker({
 
   return (
     <div className={cn("space-y-1.5 transition-opacity", isPending && "opacity-60")}>
-      <p className="text-xs font-medium text-muted">Labels</p>
+      <p className="text-xs font-medium text-muted-foreground">Labels</p>
       <div className="flex flex-wrap gap-1.5">
         {allLabels.map((label) => {
           const isActive = active.has(label.id);
@@ -38,7 +38,7 @@ export function LabelPicker({
                 "rounded border px-2 py-0.5 text-xs transition-colors",
                 isActive
                   ? "border-transparent"
-                  : "border-border text-muted hover:bg-surface-hover hover:text-foreground",
+                  : "border-border text-muted-foreground hover:bg-surface-hover hover:text-foreground",
               )}
               // Colours come from the database, so they must be inline styles --
               // Tailwind only generates classes it can see at build time.

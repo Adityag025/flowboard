@@ -63,7 +63,7 @@ export default async function IssueDetailPage({ params }: Params) {
 
   return (
     <div className="space-y-6">
-      <nav className="flex items-center gap-2 text-sm text-muted">
+      <nav className="flex items-center gap-2 text-sm text-muted-foreground">
         <Link href="/issues" className="transition-colors hover:text-foreground">
           Issues
         </Link>
@@ -97,7 +97,7 @@ export default async function IssueDetailPage({ params }: Params) {
                 </Badge>
               ))}
             </div>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted-foreground">
               Opened {relativeTime(issue.createdAt)}
               {issue.creator ? ` by ${issue.creator.name}` : ""} in{" "}
               {issue.project.name}
@@ -113,12 +113,12 @@ export default async function IssueDetailPage({ params }: Params) {
                 {issue.description}
               </p>
             ) : (
-              <p className="text-sm text-muted">No description provided.</p>
+              <p className="text-sm text-muted-foreground">No description provided.</p>
             )}
           </Card>
 
           <section className="space-y-3">
-            <h2 className="text-sm font-medium text-muted">
+            <h2 className="text-sm font-medium text-muted-foreground">
               Comments ({issue.comments.length})
             </h2>
 
@@ -131,7 +131,7 @@ export default async function IssueDetailPage({ params }: Params) {
                         <span className="font-medium">
                           {comment.author?.name ?? "Deleted user"}
                         </span>
-                        <span className="text-muted">
+                        <span className="text-muted-foreground">
                           {relativeTime(comment.createdAt)}
                           {comment.editedAt ? " (edited)" : ""}
                         </span>
@@ -179,10 +179,10 @@ export default async function IssueDetailPage({ params }: Params) {
           </Card>
 
           <div className="space-y-2">
-            <h2 className="text-xs font-medium text-muted">Activity</h2>
+            <h2 className="text-xs font-medium text-muted-foreground">Activity</h2>
             <ul className="space-y-2">
               {issue.activities.map((activity) => (
-                <li key={activity.id} className="text-xs text-muted">
+                <li key={activity.id} className="text-xs text-muted-foreground">
                   {describeActivity(activity)}{" "}
                   <span className="opacity-70">
                     · {relativeTime(activity.createdAt)}

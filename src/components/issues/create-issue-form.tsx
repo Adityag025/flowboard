@@ -148,7 +148,7 @@ export function CreateIssueForm({
         <SubmitButton>Create issue</SubmitButton>
         <Link
           href="/issues"
-          className="text-sm text-muted transition-colors hover:text-foreground"
+          className="text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           Cancel
         </Link>

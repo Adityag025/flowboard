@@ -84,7 +84,7 @@ export function IssueFilters({
             setParam("q", event.currentTarget.value.trim());
           }
         }}
-        className="h-9 w-full rounded-md border border-border bg-canvas px-3 text-sm outline-none placeholder:text-muted focus:border-accent sm:w-64"
+        className="h-9 w-full rounded-md border border-border bg-canvas px-3 text-sm outline-none placeholder:text-muted-foreground focus:border-accent sm:w-64"
       />
 
       <Select
@@ -158,7 +158,7 @@ export function IssueFilters({
         <button
           type="button"
           onClick={() => startTransition(() => router.push("/issues"))}
-          className="h-9 rounded-md px-3 text-sm text-muted transition-colors hover:bg-surface-hover hover:text-foreground"
+          className="h-9 rounded-md px-3 text-sm text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
         >
           Clear ({activeCount})
         </button>

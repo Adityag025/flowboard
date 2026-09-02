@@ -69,7 +69,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
         >
           <div className="border-b border-border px-3 py-2">
             <p className="truncate text-sm font-medium">{user.name}</p>
-            <p className="truncate text-xs text-muted">{user.email}</p>
+            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
           </div>
 
           {/*
@@ -81,7 +81,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
             <button
               type="submit"
               role="menuitem"
-              className="w-full px-3 py-2 text-left text-sm text-muted transition-colors hover:bg-surface-hover hover:text-foreground"
+              className="w-full px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
             >
               Sign out
             </button>

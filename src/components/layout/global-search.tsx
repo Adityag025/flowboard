@@ -158,7 +158,7 @@ export function GlobalSearch() {
   return (
     <div ref={containerRef} className="relative hidden sm:block">
       <Search
-        className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted"
+        className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
         aria-hidden="true"
       />
 
@@ -180,11 +180,11 @@ export function GlobalSearch() {
         aria-controls={listId}
         aria-autocomplete="list"
         aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
-        className="h-8 w-56 rounded-md border border-border bg-canvas pl-8 pr-12 text-sm outline-none transition-colors placeholder:text-muted focus:border-accent"
+        className="h-8 w-56 rounded-md border border-border bg-canvas pl-8 pr-12 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-accent"
       />
 
       {/* Discoverability: nobody guesses a shortcut that is not shown. */}
-      <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-border px-1 text-[10px] text-muted">
+      <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-border px-1 text-[10px] text-muted-foreground">
         ⌘K
       </kbd>
 
@@ -196,11 +196,11 @@ export function GlobalSearch() {
           className="absolute right-0 top-10 z-50 w-96 overflow-hidden rounded-md border border-border bg-surface py-1 shadow-lg"
         >
           {isSearching && visibleHits.length === 0 && (
-            <p className="px-3 py-2 text-xs text-muted">Searching…</p>
+            <p className="px-3 py-2 text-xs text-muted-foreground">Searching…</p>
           )}
 
           {!isSearching && visibleHits.length === 0 && (
-            <p className="px-3 py-2 text-xs text-muted">
+            <p className="px-3 py-2 text-xs text-muted-foreground">
               No issues match “{query.trim()}”.
             </p>
           )}
@@ -221,16 +221,16 @@ export function GlobalSearch() {
                 index === active && "bg-surface-hover",
               )}
             >
-              <span className="shrink-0 font-mono text-[11px] text-muted">{hit.key}</span>
+              <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{hit.key}</span>
               <span className="min-w-0 flex-1 truncate text-sm">{hit.title}</span>
-              <span className="shrink-0 text-[10px] text-muted">
+              <span className="shrink-0 text-[10px] text-muted-foreground">
                 {statusLabels[hit.status as keyof typeof statusLabels] ?? hit.status}
               </span>
             </button>
           ))}
 
           {visibleHits.length > 0 && (
-            <div className="mt-1 border-t border-border px-3 py-1.5 text-[10px] text-muted">
+            <div className="mt-1 border-t border-border px-3 py-1.5 text-[10px] text-muted-foreground">
               Enter to open · ↑↓ to navigate · Enter with nothing selected sees all matches
             </div>
           )}

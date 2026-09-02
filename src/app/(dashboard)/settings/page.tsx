@@ -48,7 +48,7 @@ export default async function SettingsPage() {
       <div className="space-y-4">
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <Card>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             This account no longer exists. Please sign out and sign in again.
           </p>
         </Card>
@@ -62,7 +62,7 @@ export default async function SettingsPage() {
     <div className="max-w-2xl space-y-6">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Member since{" "}
           {account.createdAt.toLocaleDateString("en-GB", {
             day: "numeric",
@@ -78,7 +78,7 @@ export default async function SettingsPage() {
             <h2 id="profile-heading" className="text-sm font-medium">
               Profile
             </h2>
-            <p className="text-xs text-muted">How your name appears on issues and comments</p>
+            <p className="text-xs text-muted-foreground">How your name appears on issues and comments</p>
           </div>
 
           <SettingsForm
@@ -115,7 +115,7 @@ export default async function SettingsPage() {
             <h2 id="password-heading" className="text-sm font-medium">
               Password
             </h2>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted-foreground">
               {hasPassword
                 ? "Your current password is required to set a new one"
                 : "This account signs in without a password"}
@@ -153,7 +153,7 @@ export default async function SettingsPage() {
               ]}
             />
           ) : (
-            <p className="text-sm text-muted">Nothing to change here.</p>
+            <p className="text-sm text-muted-foreground">Nothing to change here.</p>
           )}
         </Card>
       </section>
@@ -164,7 +164,7 @@ export default async function SettingsPage() {
             <h2 id="workspaces-heading" className="text-sm font-medium">
               Workspaces
             </h2>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted-foreground">
               Only owners and admins can rename a workspace
             </p>
           </div>
@@ -176,8 +176,8 @@ export default async function SettingsPage() {
             return (
               <Card key={workspace.id} className="space-y-4">
                 <div className="flex items-baseline justify-between gap-3">
-                  <p className="font-mono text-xs text-muted">/{workspace.slug}</p>
-                  <span className="rounded bg-surface-hover px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
+                  <p className="font-mono text-xs text-muted-foreground">/{workspace.slug}</p>
+                  <span className="rounded bg-surface-hover px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
                     {role.toLowerCase()}
                   </span>
                 </div>
@@ -209,7 +209,7 @@ export default async function SettingsPage() {
                       this regardless -- the role is re-checked in the action,
                       because hiding a form is not access control.
                     */}
-                    <p className="text-xs text-muted">
+                    <p className="text-xs text-muted-foreground">
                       Ask an owner or admin to rename this workspace.
                     </p>
                   </>
@@ -220,7 +220,7 @@ export default async function SettingsPage() {
 
           {account.memberships.length === 0 && (
             <Card>
-              <p className="text-sm text-muted">You aren&apos;t in any workspace yet.</p>
+              <p className="text-sm text-muted-foreground">You aren&apos;t in any workspace yet.</p>
             </Card>
           )}
         </div>

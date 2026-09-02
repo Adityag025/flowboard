@@ -86,7 +86,7 @@ export default async function IssuesPage({
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Issues</h1>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             {total} {total === 1 ? "issue" : "issues"}
             {(nextCursor || isPaged) &&
               ` · showing ${issues.length} per page`}
@@ -102,7 +102,7 @@ export default async function IssuesPage({
 
       {issues.length === 0 ? (
         <Card>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             No issues match these filters.{" "}
             <Link href="/issues" className="text-accent hover:underline">
               Clear them
@@ -142,7 +142,7 @@ export default async function IssuesPage({
               {isPaged ? (
                 <Link
                   href={firstPageHref}
-                  className="text-muted transition-colors hover:text-foreground"
+                  className="text-muted-foreground transition-colors hover:text-foreground"
                 >
                   &larr; First page
                 </Link>
@@ -155,7 +155,7 @@ export default async function IssuesPage({
                   Next {ISSUES_PER_PAGE} &rarr;
                 </Link>
               ) : (
-                <span className="text-muted opacity-70">End of results</span>
+                <span className="text-muted-foreground opacity-70">End of results</span>
               )}
             </nav>
           )}
