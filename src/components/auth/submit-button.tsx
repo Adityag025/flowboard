@@ -3,6 +3,7 @@
 import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /**
  * A submit button that disables itself while the form is in flight.
@@ -13,11 +14,17 @@ import { Button } from "@/components/ui/button";
  *
  * Without this, a double-click submits twice and creates two accounts.
  */
-export function SubmitButton({ children }: { children: React.ReactNode }) {
+export function SubmitButton({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" disabled={pending} className="w-full">
+    <Button type="submit" disabled={pending} className={cn("w-full", className)}>
       {pending ? "Please wait..." : children}
     </Button>
   );

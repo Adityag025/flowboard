@@ -145,7 +145,9 @@ export function CreateIssueForm({
       )}
 
       <div className="flex items-center gap-3">
-        <SubmitButton>Create issue</SubmitButton>
+        {/* Button's own shrink-0 plus w-full would push Cancel out of the card;
+            flex-1 makes it take only the space Cancel leaves. */}
+        <SubmitButton className="flex-1">Create issue</SubmitButton>
         <Link
           href="/issues"
           className="text-sm text-muted-foreground transition-colors hover:text-foreground"
